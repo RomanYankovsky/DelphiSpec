@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<DelphiSpecLanguages>
+  <EN>
+    <Feature>Feature:</Feature>
+    <Scenario>Scenario:</Scenario>
+    <Given>Given</Given>
+    <And>And</And>
+    <When>When</When>
+    <Then>Then</Then>
+    <But>But</But>
+  </EN>
+  <RU>
+    <Feature>Функция:</Feature>
+    <Feature>Функционал:</Feature>
+    <Scenario>Сценарий:</Scenario>
+    <Given>Допустим</Given>
+    <Given>Дано</Given>
+    <And>И</And>
+    <And>К тому же</And>
+    <When>Когда</When>
+    <When>Если</When>
+    <Then>Тогда</Then>
+    <Then>То</Then>
+    <But>Но</But>
+    <But>А</But>
+  </RU>
+</DelphiSpecLanguages>
