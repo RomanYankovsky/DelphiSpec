@@ -7,7 +7,6 @@ uses
 
 type
   [_Feature('calculator')]
-  [_Feature('калькул€тор')]
   TSampleCalculatorSteps = class(TStepDefinitions)
   private
     FCalc: TCalculator;
@@ -16,19 +15,15 @@ type
     procedure TearDown; override;
 
     [_Given('I have entered (.*) in calculator')]
-    [_Given('€ ввожу (.*) на калькул€торе')]
     procedure EnterInt(Value: string);
 
     [_When('I press Add')]
-    [_When('€ нажимаю —Ћќ∆»“№')]
     procedure AddInt;
 
     [_When('I press Mul')]
-    [_When('€ нажимаю ”ћЌќ∆»“№')]
     procedure MulInt;
 
     [_Then('the result should be (.*) on the screen')]
-    [_Then('результат на экране должен быть (.*)')]
     procedure TestResult(Value: string);
   end;
 
