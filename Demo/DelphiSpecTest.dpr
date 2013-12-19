@@ -32,7 +32,7 @@ uses
 {R *.RES}
 
 begin
-  PrepareDelphiSpecs(TPath.Combine(ExtractFilePath(Application.ExeName), 'features'), True, 'RU');
+  PrepareDelphiSpecs(TPath.Combine(ExtractFilePath(Application.ExeName), 'features'), True, 'EN');
   DUnitTestRunner.RunRegisteredTests;
 end.
 
