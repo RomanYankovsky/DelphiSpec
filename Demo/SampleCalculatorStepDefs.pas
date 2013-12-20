@@ -15,7 +15,7 @@ type
     procedure TearDown; override;
 
     [_Given('I have entered (.*) in calculator')]
-    procedure EnterInt(Value: string);
+    procedure EnterInt(Value: Integer);
 
     [_When('I press Add')]
     procedure AddInt;
@@ -24,7 +24,7 @@ type
     procedure MulInt;
 
     [_Then('the result should be (.*) on the screen')]
-    procedure TestResult(Value: string);
+    procedure TestResult(Value: Integer);
   end;
 
 implementation
@@ -39,9 +39,9 @@ begin
   FCalc.Add;
 end;
 
-procedure TSampleCalculatorSteps.EnterInt(Value: string);
+procedure TSampleCalculatorSteps.EnterInt(Value: Integer);
 begin
-  FCalc.Push(Value.ToInteger);
+  FCalc.Push(Value);
 end;
 
 procedure TSampleCalculatorSteps.MulInt;
@@ -59,9 +59,9 @@ begin
   FCalc.Free;
 end;
 
-procedure TSampleCalculatorSteps.TestResult(Value: string);
+procedure TSampleCalculatorSteps.TestResult(Value: Integer);
 begin
-  if FCalc.Value <> Value.ToInteger then
+  if FCalc.Value <> Value then
     raise ETestFailure.Create('Incorrect result on calculator screen');
 end;
 

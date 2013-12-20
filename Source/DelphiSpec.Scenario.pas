@@ -3,7 +3,8 @@ unit DelphiSpec.Scenario;
 interface
 
 uses
-  System.SysUtils, System.Classes, DelphiSpec.StepDefinitions, DelphiSpec.Attributes;
+  System.SysUtils, System.Classes, DelphiSpec.StepDefinitions, DelphiSpec.Attributes,
+  System.Rtti;
 
 type
   EScenarioException = class(Exception);
@@ -16,6 +17,7 @@ type
     FWhen: TStringList;
     FThen: TStringList;
 
+    function ConvertParamValue(const Value: string; ParamType: TRttiType): TValue;
     procedure InvokeStep(const Step: string; AttributeClass: TDelphiSpecAttributeClass);
   public
     constructor Create(const Name: string; StepDefinitionsClass: TStepDefinitionsClass); reintroduce;
@@ -33,7 +35,7 @@ type
 implementation
 
 uses
-  System.Rtti, System.RegularExpressions;
+  System.TypInfo, System.RegularExpressions, TestFramework;
 
 { TScenario }
 
@@ -50,6 +52,17 @@ end;
 procedure TScenario.AddWhen(const Value: string);
 begin
   FWhen.Add(Value);
+end;
+
+function TScenario.ConvertParamValue(const Value: string;
+  ParamType: TRttiType): TValue;
+begin
+  case ParamType.TypeKind of
+    TTypeKind.tkInteger: Result := StrToInt(Value);
+    TTypeKind.tkInt64: Result := StrToInt64(Value);
+    else
+      Result := Value;
+  end;
 end;
 
 constructor TScenario.Create(const Name: string;
@@ -103,7 +116,9 @@ var
 
   RegExMatch: TMatch;
   I: Integer;
-  Params: array of TValue;
+
+  Params: TArray<TRttiParameter>;
+  Values: TArray<TValue>;
 
   MethodInvoked: Boolean;
 begin
@@ -124,11 +139,16 @@ begin
           if not RegExMatch.Success then
             Continue;
 
-          SetLength(Params, RegExMatch.Groups.Count - 1);
-          for I := 1 to RegExMatch.Groups.Count - 1 do
-            Params[I - 1] := RegExMatch.Groups[I].Value;
+          SetLength(Values, RegExMatch.Groups.Count - 1);
+          Params := RttiMethod.GetParameters;
 
-          RttiMethod.Invoke(FStepDefs, Params);
+          if Length(Params) <> Length(Values) then
+            raise EScenarioException.CreateFmt('Parameter count does not match: "%s" (%s)', [Step, AttributeClass.ClassName]);
+
+          for I := 0 to High(Params) do
+            Values[I] := ConvertParamValue(RegExMatch.Groups[I + 1].Value, Params[I].ParamType);
+
+          RttiMethod.Invoke(FStepDefs, Values);
 
           MethodInvoked := True;
           Break;
@@ -141,7 +161,7 @@ begin
   end;
 
   if not MethodInvoked then
-    raise EScenarioException.CreateFmt('Cannot resolve "%s" (%s)', [Step, AttributeClass.ClassName]);
+    raise ETestFailure.CreateFmt('Step is not implemented yet: "%s" (%s)', [Step, AttributeClass.ClassName]);
 end;
 
 end.
