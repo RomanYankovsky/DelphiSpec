@@ -71,7 +71,6 @@ const
   sAnd = 'And';
   sWhen = 'When';
   sThen = 'Then';
-  sBut = 'But';
 
 { TDelphiSpecFileReader }
 
@@ -235,8 +234,8 @@ begin
   Command := Trim(FReader.ReadLine);
   if FLanguages.StartsWith(Command, sThen) then
     Scenario.AddThen(FLanguages.StepSubstring(Command, sThen))
-  else if FLanguages.StartsWith(Command, sBut) then
-    Scenario.AddThen(FLanguages.StepSubstring(Command, sBut));
+  else if FLanguages.StartsWith(Command, sAnd) then
+    Scenario.AddThen(FLanguages.StepSubstring(Command, sAnd));
 
   PassEmptyLines;
   if FReader.Eof then
@@ -244,7 +243,7 @@ begin
 
   Command := Trim(FReader.PeekLine);
 
-  if FLanguages.StartsWith(Command, sBut) then
+  if FLanguages.StartsWith(Command, sAnd) then
     ThenNode(StepDefsClass, Scenario, Scenarios)
   else if FLanguages.StartsWith(Command, sScenario) then
     ScenarioNode(StepDefsClass, Scenarios)
@@ -260,13 +259,18 @@ var
   Command: string;
 begin
   Command := Trim(FReader.ReadLine);
-  Scenario.SetWhen(FLanguages.StepSubstring(Command, sWhen));
+  if FLanguages.StartsWith(Command, sWhen) then
+    Scenario.AddWhen(FLanguages.StepSubstring(Command, sWhen))
+  else if FLanguages.StartsWith(Command, sAnd) then
+    Scenario.AddWhen(FLanguages.StepSubstring(Command, sAnd));
 
   PassEmptyLines;
   CheckEof;
   Command := Trim(FReader.PeekLine);
 
-  if FLanguages.StartsWith(Command, sThen) then
+  if FLanguages.StartsWith(Command, sAnd) then
+    WhenNode(StepDefsClass, Scenario, Scenarios)
+  else if FLanguages.StartsWith(Command, sThen) then
     ThenNode(StepDefsClass, Scenario, Scenarios)
   else
     raise EDelphiSpecSyntaxError.Create('Syntax Error!');

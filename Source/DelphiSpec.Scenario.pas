@@ -13,7 +13,7 @@ type
     FStepDefs: TStepDefinitions;
 
     FGiven: TStringList;
-    FWhen: string;
+    FWhen: TStringList;
     FThen: TStringList;
 
     procedure InvokeStep(const Step: string; AttributeClass: TDelphiSpecAttributeClass);
@@ -22,7 +22,7 @@ type
     destructor Destroy; override;
 
     procedure AddGiven(const Value: string);
-    procedure SetWhen(const Value: string);
+    procedure AddWhen(const Value: string);
     procedure AddThen(const Value: string);
 
     procedure Execute;
@@ -47,6 +47,11 @@ begin
   FThen.Add(Value);
 end;
 
+procedure TScenario.AddWhen(const Value: string);
+begin
+  FWhen.Add(Value);
+end;
+
 constructor TScenario.Create(const Name: string;
   StepDefinitionsClass: TStepDefinitionsClass);
 begin
@@ -55,7 +60,7 @@ begin
   FStepDefs := StepDefinitionsClass.Create;
 
   FGiven := TStringList.Create;
-  FWhen := '';
+  FWhen := TStringList.Create;;
   FThen := TStringList.Create;
 end;
 
@@ -64,6 +69,7 @@ begin
   FStepDefs.Free;
 
   FGiven.Free;
+  FWhen.Free;
   FThen.Free;
 
   inherited;
@@ -78,7 +84,8 @@ begin
     for Command in FGiven do
       InvokeStep(Command, _GivenAttribute);
 
-    InvokeStep(FWhen, _WhenAttribute);
+    for Command in FWhen do
+      InvokeStep(Command, _WhenAttribute);
 
     for Command in FThen do
       InvokeStep(Command, _ThenAttribute);
@@ -135,11 +142,6 @@ begin
 
   if not MethodInvoked then
     raise EScenarioException.CreateFmt('Cannot resolve "%s" (%s)', [Step, AttributeClass.ClassName]);
-end;
-
-procedure TScenario.SetWhen(const Value: string);
-begin
-  FWhen := Value;
 end;
 
 end.

@@ -4,10 +4,10 @@
     <Feature>Feature:</Feature>
     <Scenario>Scenario:</Scenario>
     <Given>Given</Given>
-    <And>And</And>
     <When>When</When>
     <Then>Then</Then>
-    <But>But</But>
+    <And>And</And>
+    <And>But</And>
   </EN>
   <RU>
     <Feature>Функция:</Feature>
@@ -15,13 +15,13 @@
     <Scenario>Сценарий:</Scenario>
     <Given>Допустим</Given>
     <Given>Дано</Given>
-    <And>И</And>
-    <And>К тому же</And>
     <When>Когда</When>
     <When>Если</When>
     <Then>Тогда</Then>
     <Then>То</Then>
-    <But>Но</But>
-    <But>А</But>
+    <And>И</And>
+    <And>К тому же</And>
+    <And>Но</And>
+    <And>А</And>
   </RU>
 </DelphiSpecLanguages>
