@@ -30,7 +30,7 @@ type
 implementation
 
 uses
-  System.SysUtils, TestFramework, DelphiSpec.Core;
+  SysUtils, TestFramework, DelphiSpec.Core;
 
 { TSampleCalculatorSteps }
 

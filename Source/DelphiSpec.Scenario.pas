@@ -3,8 +3,8 @@ unit DelphiSpec.Scenario;
 interface
 
 uses
-  System.SysUtils, System.Classes, DelphiSpec.StepDefinitions, DelphiSpec.Attributes,
-  System.Rtti;
+  SysUtils, Classes, DelphiSpec.StepDefinitions, DelphiSpec.Attributes,
+  Rtti;
 
 type
   EScenarioException = class(Exception);
@@ -35,7 +35,7 @@ type
 implementation
 
 uses
-  System.TypInfo, System.RegularExpressions, TestFramework;
+  TypInfo, RegularExpressions, TestFramework;
 
 { TScenario }
 
