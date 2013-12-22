@@ -3,23 +3,29 @@ unit DelphiSpec.Attributes;
 interface
 
 type
-  TDelphiSpecAttributeClass = class of TDelphiSpecAttribute;
   TDelphiSpecAttribute = class(TCustomAttribute)
   protected
     FText: string;
   public
-    constructor Create(const Text: string = ''); reintroduce;
+    constructor Create(const Text: string); reintroduce;
 
     property Text: string read FText;
   end;
 
-  _FeatureAttribute = class(TDelphiSpecAttribute);
+  FeatureAttribute = class(TDelphiSpecAttribute);
 
-  _GivenAttribute = class(TDelphiSpecAttribute);
+  TDelphiSpecStepAttributeClass = class of TDelphiSpecStepAttribute;
+  TDelphiSpecStepAttribute = class(TDelphiSpecAttribute)
+  public
+    constructor Create; overload;
+    class function Prefix: string;
+  end;
 
-  _WhenAttribute = class(TDelphiSpecAttribute);
+  Given_Attribute = class(TDelphiSpecStepAttribute);
 
-  _ThenAttribute = class(TDelphiSpecAttribute);
+  When_Attribute = class(TDelphiSpecStepAttribute);
+
+  Then_Attribute = class(TDelphiSpecStepAttribute);
 
 implementation
 
@@ -27,8 +33,19 @@ implementation
 
 constructor TDelphiSpecAttribute.Create(const Text: string);
 begin
-  inherited Create;
   FText := Text;
+end;
+
+{ TDelphiSpecStepAttribute }
+
+constructor TDelphiSpecStepAttribute.Create;
+begin
+end;
+
+class function TDelphiSpecStepAttribute.Prefix: string;
+begin
+  Result := ClassName;
+  SetLength(Result, Length(Result) - 9);
 end;
 
 end.

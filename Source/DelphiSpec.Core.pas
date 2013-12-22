@@ -90,8 +90,8 @@ begin
     RttiType := RttiContext.GetType(StepDefinitionsClass);
 
     for RttiAttr in RttiType.GetAttributes do
-      if RttiAttr is _FeatureAttribute then
-        __StepDefsClassList.Add(AnsiLowerCase(_FeatureAttribute(RttiAttr).Text), StepDefinitionsClass);
+      if RttiAttr is FeatureAttribute then
+        __StepDefsClassList.Add(AnsiLowerCase(FeatureAttribute(RttiAttr).Text), StepDefinitionsClass);
   finally
     RttiContext.Free;
   end;

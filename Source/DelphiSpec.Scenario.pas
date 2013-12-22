@@ -18,9 +18,11 @@ type
     FThen: TStringList;
 
     function ConvertParamValue(const Value: string; ParamType: TRttiType): TValue;
-    function PrepareStepDefinition(const S: string; const MethodName: string;
-      const Params: TArray<TRttiParameter>; AttributeClass: TDelphiSpecAttributeClass): string;
-    procedure InvokeStep(const Step: string; AttributeClass: TDelphiSpecAttributeClass);
+    procedure FindStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass);
+    function InvokeStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass;
+      RttiMethod: TRttiMethod; const Value: string): Boolean;
+    function PrepareStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass;
+      const MethodName: string; const Params: TArray<TRttiParameter>): string;
   public
     constructor Create(const Name: string; StepDefinitionsClass: TStepDefinitionsClass); reintroduce;
     destructor Destroy; override;
@@ -115,36 +117,25 @@ begin
   FStepDefs.SetUp;
   try
     for Command in FGiven do
-      InvokeStep(Command, _GivenAttribute);
+      FindStep(Command, Given_Attribute);
 
     for Command in FWhen do
-      InvokeStep(Command, _WhenAttribute);
+      FindStep(Command, When_Attribute);
 
     for Command in FThen do
-      InvokeStep(Command, _ThenAttribute);
+      FindStep(Command, Then_Attribute);
   finally
     FStepDefs.TearDown;
   end;
 end;
 
-procedure TScenario.InvokeStep(const Step: string; AttributeClass: TDelphiSpecAttributeClass);
+procedure TScenario.FindStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass);
 var
   RttiContext: TRttiContext;
   RttiType: TRttiType;
   RttiMethod: TRttiMethod;
   RttiAttr: TCustomAttribute;
-
-  RegExMatch: TMatch;
-  I: Integer;
-  S: string;
-
-  Params: TArray<TRttiParameter>;
-  Values: TArray<TValue>;
-
-  MethodInvoked: Boolean;
 begin
-  MethodInvoked := False;
-
   RttiContext := TRttiContext.Create;
   try
     RttiType := RttiContext.GetType(FStepDefs.ClassInfo);
@@ -153,50 +144,59 @@ begin
     begin
       for RttiAttr in RttiMethod.GetAttributes do
         if RttiAttr is AttributeClass then
-        begin
-          Params := RttiMethod.GetParameters;
-          S := PrepareStepDefinition(TDelphiSpecAttribute(RttiAttr).Text, RttiMethod.Name, Params, AttributeClass);
-          RegExMatch := TRegEx.Match(Step, S, [TRegExOption.roIgnoreCase]);
-          if not RegExMatch.Success then
-            Continue;
+          if InvokeStep(Step, AttributeClass, RttiMethod, TDelphiSpecAttribute(RttiAttr).Text) then
+            Exit;
 
-          SetLength(Values, RegExMatch.Groups.Count - 1);
-
-          if Length(Params) <> Length(Values) then
-            raise EScenarioException.CreateFmt('Parameter count does not match: "%s" (%s)', [Step, AttributeClass.ClassName]);
-
-          for I := 0 to High(Params) do
-            Values[I] := ConvertParamValue(RegExMatch.Groups[I + 1].Value, Params[I].ParamType);
-
-          RttiMethod.Invoke(FStepDefs, Values);
-
-          MethodInvoked := True;
-          Break;
-        end;
-      if MethodInvoked then
-        Break;
+      if StartsText(AttributeClass.Prefix, RttiMethod.Name) then
+        if InvokeStep(Step, AttributeClass, RttiMethod, '') then
+          Exit;
     end;
   finally
     RttiContext.Free;
   end;
 
-  if not MethodInvoked then
-    raise ETestFailure.CreateFmt('Step is not implemented yet: "%s" (%s)', [Step, AttributeClass.ClassName]);
+  raise ETestFailure.CreateFmt('Step is not implemented yet: "%s" (%s)', [Step, AttributeClass.ClassName]);
 end;
 
-function TScenario.PrepareStepDefinition(const S: string; const MethodName: string;
-  const Params: TArray<TRttiParameter>; AttributeClass: TDelphiSpecAttributeClass): string;
+function TScenario.InvokeStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass;
+  RttiMethod: TRttiMethod; const Value: string): Boolean;
+var
+  RegExMatch: TMatch;
+  I: Integer;
+  S: string;
+  Params: TArray<TRttiParameter>;
+  Values: TArray<TValue>;
+begin
+  Params := RttiMethod.GetParameters;
+  S := PrepareStep(Value, AttributeClass, RttiMethod.Name, Params);
+  RegExMatch := TRegEx.Match(Step, S, [TRegExOption.roIgnoreCase]);
+  if not RegExMatch.Success then
+    Exit(False);
+
+  SetLength(Values, RegExMatch.Groups.Count - 1);
+  if Length(Params) <> Length(Values) then
+    raise EScenarioException.CreateFmt('Parameter count does not match: "%s" (%s)', [Step, AttributeClass.ClassName]);
+
+  for I := 0 to High(Params) do
+    Values[I] := ConvertParamValue(RegExMatch.Groups[I + 1].Value, Params[I].ParamType);
+
+  RttiMethod.Invoke(FStepDefs, Values);
+  Result := True;
+end;
+
+function TScenario.PrepareStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass;
+  const MethodName: string; const Params: TArray<TRttiParameter>): string;
 var
   I: Integer;
   Prefix: string;
 begin
-  Result := S;
+  Result := Step;
   if Result = '' then
   begin
-    Prefix := MidStr(AttributeClass.ClassName, 2, Length(AttributeClass.ClassName) - 10);
+    Prefix := AttributeClass.Prefix;
     if StartsText(Prefix, MethodName) then
     begin
-      Result := RightStr(MethodName, Length(MethodName) - Length(Prefix) - 1);
+      Result := RightStr(MethodName, Length(MethodName) - Length(Prefix));
       Result := ReplaceStr(Result, '_', ' ');
       for I := 0 to High(Params) do
         Result := TRegEx.Replace(Result, '\b' + Params[I].Name + '\b', '$' + Params[I].Name, [TRegExOption.roIgnoreCase]);

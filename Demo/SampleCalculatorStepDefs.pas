@@ -6,7 +6,7 @@ uses
   SampleCalculator, DelphiSpec.Attributes, DelphiSpec.StepDefinitions;
 
 type
-  [_Feature('calculator')]
+  [Feature('calculator')]
   TSampleCalculatorSteps = class(TStepDefinitions)
   private
     FCalc: TCalculator;
@@ -14,17 +14,23 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
 
-    [_Given('I have entered (.*) in calculator')]
-    procedure EnterInt(Value: Integer);
+//    [Given_('I have entered (.*) in calculator')]
+//    [Given_('I have entered $value in calculator')]
+//    [Given_]
+    procedure Given_I_have_entered_value_in_calculator(Value: Integer);
 
-    [_When('I press Add')]
-    procedure AddInt;
+//    [When_('I press Add')]
+//    [When_]
+    procedure When_I_press_add;
 
-    [_When('I press Mul')]
-    procedure MulInt;
+//    [When_('I press Mul')]
+//    [When_]
+    procedure When_I_press_mul;
 
-    [_Then('the result should be (.*) on the screen')]
-    procedure TestResult(Value: Integer);
+//    [Then_('the result should be (.*) on the screen')]
+//    [Then_('the result should be $value on the screen')]
+//    [Then_]
+    procedure Then_the_result_should_be_value_on_the_screen(Value: Integer);
   end;
 
 implementation
@@ -34,17 +40,17 @@ uses
 
 { TSampleCalculatorSteps }
 
-procedure TSampleCalculatorSteps.AddInt;
+procedure TSampleCalculatorSteps.When_I_press_add;
 begin
   FCalc.Add;
 end;
 
-procedure TSampleCalculatorSteps.EnterInt(Value: Integer);
+procedure TSampleCalculatorSteps.Given_I_have_entered_value_in_calculator(Value: Integer);
 begin
   FCalc.Push(Value);
 end;
 
-procedure TSampleCalculatorSteps.MulInt;
+procedure TSampleCalculatorSteps.When_I_press_mul;
 begin
   FCalc.Mul;
 end;
@@ -59,7 +65,7 @@ begin
   FCalc.Free;
 end;
 
-procedure TSampleCalculatorSteps.TestResult(Value: Integer);
+procedure TSampleCalculatorSteps.Then_the_result_should_be_value_on_the_screen(Value: Integer);
 begin
   if FCalc.Value <> Value then
     raise ETestFailure.Create('Incorrect result on calculator screen');
