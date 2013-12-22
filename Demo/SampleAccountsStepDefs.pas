@@ -21,7 +21,7 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
 
-    procedure Given_users_exists(Table: TArray<TUserInfo>);
+    procedure Given_users_exist(Table: TArray<TUserInfo>);
 
     [When_('I login with "(.*)" and "(.*)"')]
     procedure TryLogin(const Name, Password: string);
@@ -37,7 +37,7 @@ uses
 
 { TSampleAccountSteps }
 
-procedure TSampleAccountSteps.Given_users_exists(Table: TArray<TUserInfo>);
+procedure TSampleAccountSteps.Given_users_exist(Table: TArray<TUserInfo>);
 var
   I: Integer;
 begin

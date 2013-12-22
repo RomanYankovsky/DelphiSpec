@@ -1,7 +1,7 @@
 Feature: Accounts
 
 Scenario: Correct Login
-  Given users exists:
+  Given users exist:
     | id | name  | password |
     | 1  | Roman | pass1    |  
     | 2  | Other | pass2    |
@@ -9,7 +9,7 @@ Scenario: Correct Login
   Then I have access to private messages
 
 Scenario: Incorrect Login
-  Given users exists:
+  Given users exist:
     | id | name  | password |
     | 1  | Roman | pass1    |  
     | 2  | Other | pass2    |
