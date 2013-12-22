@@ -8,7 +8,7 @@ type
   protected
     FText: string;
   public
-    constructor Create(const Text: string); reintroduce;
+    constructor Create(const Text: string = ''); reintroduce;
 
     property Text: string read FText;
   end;

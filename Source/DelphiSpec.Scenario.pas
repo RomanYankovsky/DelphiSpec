@@ -18,6 +18,8 @@ type
     FThen: TStringList;
 
     function ConvertParamValue(const Value: string; ParamType: TRttiType): TValue;
+    function PrepareStepDefinition(const S: string; const MethodName: string;
+      const Params: TArray<TRttiParameter>; AttributeClass: TDelphiSpecAttributeClass): string;
     procedure InvokeStep(const Step: string; AttributeClass: TDelphiSpecAttributeClass);
   public
     constructor Create(const Name: string; StepDefinitionsClass: TStepDefinitionsClass); reintroduce;
@@ -35,7 +37,7 @@ type
 implementation
 
 uses
-  TypInfo, RegularExpressions, TestFramework;
+  TypInfo, RegularExpressions, TestFramework, StrUtils, Types;
 
 { TScenario }
 
@@ -56,12 +58,30 @@ end;
 
 function TScenario.ConvertParamValue(const Value: string;
   ParamType: TRttiType): TValue;
+const
+  Delimiter = ',';
+var
+  Strings: TStringDynArray;
+  Values: TArray<TValue>;
+  I: Integer;
+  ElementType: TRttiType;
 begin
   case ParamType.TypeKind of
     TTypeKind.tkInteger: Result := StrToInt(Value);
     TTypeKind.tkInt64: Result := StrToInt64(Value);
-    else
-      Result := Value;
+    TTypeKind.tkEnumeration:
+      Result := TValue.FromOrdinal(ParamType.Handle, GetEnumValue(ParamType.Handle, Value));
+    TTypeKind.tkDynArray:
+    begin
+      Strings := SplitString(Value, Delimiter);
+      SetLength(Values, Length(Strings));
+      ElementType := (ParamType as TRttiDynamicArrayType).ElementType;
+      for I := Low(Strings) to High(Strings) do
+        Values[i] := ConvertParamValue(Trim(Strings[I]), ElementType);
+      Result := TValue.FromArray(ParamType.Handle, Values);
+    end;
+  else
+    Result := Value;
   end;
 end;
 
@@ -116,6 +136,7 @@ var
 
   RegExMatch: TMatch;
   I: Integer;
+  S: string;
 
   Params: TArray<TRttiParameter>;
   Values: TArray<TValue>;
@@ -133,14 +154,13 @@ begin
       for RttiAttr in RttiMethod.GetAttributes do
         if RttiAttr is AttributeClass then
         begin
-          RegExMatch := TRegEx.Match(Step, TDelphiSpecAttribute(RttiAttr).Text,
-            [TRegExOption.roIgnoreCase]);
-
+          Params := RttiMethod.GetParameters;
+          S := PrepareStepDefinition(TDelphiSpecAttribute(RttiAttr).Text, RttiMethod.Name, Params, AttributeClass);
+          RegExMatch := TRegEx.Match(Step, S, [TRegExOption.roIgnoreCase]);
           if not RegExMatch.Success then
             Continue;
 
           SetLength(Values, RegExMatch.Groups.Count - 1);
-          Params := RttiMethod.GetParameters;
 
           if Length(Params) <> Length(Values) then
             raise EScenarioException.CreateFmt('Parameter count does not match: "%s" (%s)', [Step, AttributeClass.ClassName]);
@@ -162,6 +182,27 @@ begin
 
   if not MethodInvoked then
     raise ETestFailure.CreateFmt('Step is not implemented yet: "%s" (%s)', [Step, AttributeClass.ClassName]);
+end;
+
+function TScenario.PrepareStepDefinition(const S: string; const MethodName: string;
+  const Params: TArray<TRttiParameter>; AttributeClass: TDelphiSpecAttributeClass): string;
+var
+  I: Integer;
+  Prefix: string;
+begin
+  Result := S;
+  if Result = '' then
+  begin
+    Prefix := MidStr(AttributeClass.ClassName, 2, Length(AttributeClass.ClassName) - 10);
+    if StartsText(Prefix, MethodName) then
+    begin
+      Result := RightStr(MethodName, Length(MethodName) - Length(Prefix) - 1);
+      Result := ReplaceStr(Result, '_', ' ');
+      for I := 0 to High(Params) do
+        Result := TRegEx.Replace(Result, '\b' + Params[I].Name + '\b', '$' + Params[I].Name, [TRegExOption.roIgnoreCase]);
+    end;
+  end;
+  Result := TRegEx.Replace(Result, '(\$[a-zA-Z0-9_]*)', '(.*)');
 end;
 
 end.
