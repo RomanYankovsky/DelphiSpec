@@ -8,7 +8,8 @@ uses
   DUnitTestRunner,
   SampleCalculator in 'SampleCalculator.pas',
   SampleCalculatorStepDefs in 'SampleCalculatorStepDefs.pas',
-  DelphiSpec.Core;
+  DelphiSpec.Core,
+  SampleAccountsStepDefs in 'SampleAccountsStepDefs.pas';
 
 begin
   PrepareDelphiSpecs('features', True, 'EN');

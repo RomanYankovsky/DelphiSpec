@@ -3,7 +3,7 @@ unit DelphiSpec.Parser;
 interface
 
 uses
-  SysUtils, Classes, Generics.Collections, XmlIntf,
+  SysUtils, Classes, Generics.Collections, XmlIntf, DelphiSpec.DataTable,
   DelphiSpec.Scenario, DelphiSpec.StepDefinitions;
 
 type
@@ -44,6 +44,7 @@ type
 
     procedure CheckEof;
     procedure PassEmptyLines;
+    function TryReadDataTable: IDelphiSpecDataTable;
 
     procedure FeatureNode;
     procedure ScenarioNode(StepDefsClass: TStepDefinitionsClass; Scenarios: TObjectList<TScenario>);
@@ -150,6 +151,44 @@ begin
     raise EDelphiSpecSyntaxError.Create('Syntax Error!');
 end;
 
+function TDelphiSpecParser.TryReadDataTable: IDelphiSpecDataTable;
+
+  function StrToArray(const S: string): TStringDynArray;
+  var
+    I: Integer;
+    TrimS: string;
+  begin
+    TrimS := Trim(S);
+    Result := SplitString(Copy(TrimS, 2, Length(TrimS) - 2), '|');
+
+    for I := Low(Result) to High(Result) do
+      Result[I] := Trim(Result[I]);
+  end;
+
+  function TableInNextLine: Boolean;
+  begin
+    Result := (not FReader.Eof) and StartsText('|', Trim(FReader.PeekLine));
+  end;
+
+  function ReadDataTable: IDelphiSpecDataTable;
+  var
+    DataTable: TDelphiSpecDataTable;
+  begin
+    DataTable := TDelphiSpecDataTable.Create(StrToArray(FReader.ReadLine));
+
+    while TableInNextLine do
+      DataTable.AddRow(StrToArray(FReader.ReadLine));
+
+    Result := DataTable;
+  end;
+
+begin
+  if TableInNextLine then
+    Result := ReadDataTable
+  else
+    Result := nil;
+end;
+
 procedure TDelphiSpecParser.FeatureNode;
 var
   Command: string;
@@ -180,13 +219,15 @@ var
   Command: string;
 begin
   Command := Trim(FReader.ReadLine);
+
   if FLanguages.StartsWith(Command, sGiven) then
-    Scenario.AddGiven(FLanguages.StepSubstring(Command, sGiven))
+    Scenario.AddGiven(FLanguages.StepSubstring(Command, sGiven), TryReadDataTable)
   else if FLanguages.StartsWith(Command, sAnd) then
-    Scenario.AddGiven(FLanguages.StepSubstring(Command, sAnd));
+    Scenario.AddGiven(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable);
 
   PassEmptyLines;
   CheckEof;
+
   Command := Trim(FReader.PeekLine);
 
   if FLanguages.StartsWith(Command, sAnd) then
@@ -232,10 +273,11 @@ var
   Command: string;
 begin
   Command := Trim(FReader.ReadLine);
+
   if FLanguages.StartsWith(Command, sThen) then
-    Scenario.AddThen(FLanguages.StepSubstring(Command, sThen))
+    Scenario.AddThen(FLanguages.StepSubstring(Command, sThen), TryReadDataTable)
   else if FLanguages.StartsWith(Command, sAnd) then
-    Scenario.AddThen(FLanguages.StepSubstring(Command, sAnd));
+    Scenario.AddThen(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable);
 
   PassEmptyLines;
   if FReader.Eof then
@@ -259,10 +301,11 @@ var
   Command: string;
 begin
   Command := Trim(FReader.ReadLine);
+
   if FLanguages.StartsWith(Command, sWhen) then
-    Scenario.AddWhen(FLanguages.StepSubstring(Command, sWhen))
+    Scenario.AddWhen(FLanguages.StepSubstring(Command, sWhen), TryReadDataTable)
   else if FLanguages.StartsWith(Command, sAnd) then
-    Scenario.AddWhen(FLanguages.StepSubstring(Command, sAnd));
+    Scenario.AddWhen(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable);
 
   PassEmptyLines;
   CheckEof;

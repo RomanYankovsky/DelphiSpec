@@ -3,23 +3,36 @@ unit DelphiSpec.Scenario;
 interface
 
 uses
-  SysUtils, Classes, DelphiSpec.StepDefinitions, DelphiSpec.Attributes,
-  Rtti;
+  SysUtils, Classes, Generics.Collections, DelphiSpec.StepDefinitions, DelphiSpec.Attributes,
+  DelphiSpec.DataTable, Rtti;
 
 type
   EScenarioException = class(Exception);
   TScenario = class
+  private type
+    TStep = class
+    strict private
+      FValue: string;
+      FDataTable: IDelphiSpecDataTable;
+    public
+      constructor Create(const Value: string; DataTable: IDelphiSpecDataTable); reintroduce;
+
+      property Value: string read FValue;
+      property DataTable: IDelphiSpecDataTable read FDataTable;
+    end;
   private
     FName: string;
     FStepDefs: TStepDefinitions;
 
-    FGiven: TStringList;
-    FWhen: TStringList;
-    FThen: TStringList;
+    FGiven: TObjectList<TStep>;
+    FWhen: TObjectList<TStep>;
+    FThen: TObjectList<TStep>;
 
+    function ConvertDataTable(DataTable: IDelphiSpecDataTable; ParamType: TRttiType): TValue;
     function ConvertParamValue(const Value: string; ParamType: TRttiType): TValue;
-    procedure FindStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass);
-    function InvokeStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass;
+
+    procedure FindStep(Step: TStep; AttributeClass: TDelphiSpecStepAttributeClass);
+    function InvokeStep(Step: TStep; AttributeClass: TDelphiSpecStepAttributeClass;
       RttiMethod: TRttiMethod; const Value: string): Boolean;
     function PrepareStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass;
       const MethodName: string; const Params: TArray<TRttiParameter>): string;
@@ -27,9 +40,9 @@ type
     constructor Create(const Name: string; StepDefinitionsClass: TStepDefinitionsClass); reintroduce;
     destructor Destroy; override;
 
-    procedure AddGiven(const Value: string);
-    procedure AddWhen(const Value: string);
-    procedure AddThen(const Value: string);
+    procedure AddGiven(const Value: string; DataTable: IDelphiSpecDataTable);
+    procedure AddWhen(const Value: string; DataTable: IDelphiSpecDataTable);
+    procedure AddThen(const Value: string; DataTable: IDelphiSpecDataTable);
 
     procedure Execute;
 
@@ -41,21 +54,31 @@ implementation
 uses
   TypInfo, RegularExpressions, TestFramework, StrUtils, Types;
 
+{ TScenario.TScenarioStep }
+
+constructor TScenario.TStep.Create(const Value: string;
+  DataTable: IDelphiSpecDataTable);
+begin
+  inherited Create;
+  FValue := Value;
+  FDataTable := DataTable;
+end;
+
 { TScenario }
 
-procedure TScenario.AddGiven(const Value: string);
+procedure TScenario.AddGiven(const Value: string; DataTable: IDelphiSpecDataTable);
 begin
-  FGiven.Add(Value);
+  FGiven.Add(TStep.Create(Value, DataTable));
 end;
 
-procedure TScenario.AddThen(const Value: string);
+procedure TScenario.AddThen(const Value: string; DataTable: IDelphiSpecDataTable);
 begin
-  FThen.Add(Value);
+  FThen.Add(TStep.Create(Value, DataTable));
 end;
 
-procedure TScenario.AddWhen(const Value: string);
+procedure TScenario.AddWhen(const Value: string; DataTable: IDelphiSpecDataTable);
 begin
-  FWhen.Add(Value);
+  FWhen.Add(TStep.Create(Value, DataTable));
 end;
 
 function TScenario.ConvertParamValue(const Value: string;
@@ -94,9 +117,32 @@ begin
   FName := Name;
   FStepDefs := StepDefinitionsClass.Create;
 
-  FGiven := TStringList.Create;
-  FWhen := TStringList.Create;;
-  FThen := TStringList.Create;
+  FGiven := TObjectList<TStep>.Create(True);
+  FWhen := TObjectList<TStep>.Create(True);
+  FThen := TObjectList<TStep>.Create(True);
+end;
+
+function TScenario.ConvertDataTable(DataTable: IDelphiSpecDataTable;
+  ParamType: TRttiType): TValue;
+var
+  I: Integer;
+  RttiField: TRttiField;
+  Values: TArray<TValue>;
+  TmpArr: packed array of Byte;
+  ElementType: TRttiType;
+begin
+  ElementType := (ParamType as TRttiDynamicArrayType).ElementType;
+  SetLength(TmpArr, ElementType.TypeSize);
+
+  SetLength(Values, DataTable.Count);
+  for I := 0 to DataTable.Count - 1 do
+  begin
+    TValue.Make(@TmpArr[0], ElementType.Handle, Values[I]);
+    for RttiField in ElementType.AsRecord.GetDeclaredFields do
+      RttiField.SetValue(Values[I].GetReferenceToRawData, ConvertParamValue(DataTable[RttiField.Name][I], RttiField.FieldType));
+  end;
+
+  Result := TValue.FromArray(ParamType.Handle, Values);
 end;
 
 destructor TScenario.Destroy;
@@ -112,24 +158,24 @@ end;
 
 procedure TScenario.Execute;
 var
-  Command: string;
+  Step: TStep;
 begin
   FStepDefs.SetUp;
   try
-    for Command in FGiven do
-      FindStep(Command, Given_Attribute);
+    for Step in FGiven do
+      FindStep(Step, Given_Attribute);
 
-    for Command in FWhen do
-      FindStep(Command, When_Attribute);
+    for Step in FWhen do
+      FindStep(Step, When_Attribute);
 
-    for Command in FThen do
-      FindStep(Command, Then_Attribute);
+    for Step in FThen do
+      FindStep(Step, Then_Attribute);
   finally
     FStepDefs.TearDown;
   end;
 end;
 
-procedure TScenario.FindStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass);
+procedure TScenario.FindStep(Step: TStep; AttributeClass: TDelphiSpecStepAttributeClass);
 var
   RttiContext: TRttiContext;
   RttiType: TRttiType;
@@ -158,7 +204,7 @@ begin
   raise ETestFailure.CreateFmt('Step is not implemented yet: "%s" (%s)', [Step, AttributeClass.ClassName]);
 end;
 
-function TScenario.InvokeStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass;
+function TScenario.InvokeStep(Step: TStep; AttributeClass: TDelphiSpecStepAttributeClass;
   RttiMethod: TRttiMethod; const Value: string): Boolean;
 var
   RegExMatch: TMatch;
@@ -169,15 +215,21 @@ var
 begin
   Params := RttiMethod.GetParameters;
   S := PrepareStep(Value, AttributeClass, RttiMethod.Name, Params);
-  RegExMatch := TRegEx.Match(Step, S, [TRegExOption.roIgnoreCase]);
+  RegExMatch := TRegEx.Match(Step.Value, S, [TRegExOption.roIgnoreCase]);
   if not RegExMatch.Success then
     Exit(False);
 
   SetLength(Values, RegExMatch.Groups.Count - 1);
-  if Length(Params) <> Length(Values) then
-    raise EScenarioException.CreateFmt('Parameter count does not match: "%s" (%s)', [Step, AttributeClass.ClassName]);
+  if Assigned(Step.DataTable) then
+  begin
+    SetLength(Values, Length(Values) + 1);
+    Values[High(Values)] := ConvertDataTable(Step.DataTable, Params[High(Params)].ParamType);
+  end;
 
-  for I := 0 to High(Params) do
+  if Length(Params) <> Length(Values) then
+    raise EScenarioException.CreateFmt('Parameter count does not match: "%s" (%s)', [Step.Value, AttributeClass.ClassName]);
+
+  for I := 0 to RegExMatch.Groups.Count - 2 do
     Values[I] := ConvertParamValue(RegExMatch.Groups[I + 1].Value, Params[I].ParamType);
 
   RttiMethod.Invoke(FStepDefs, Values);
