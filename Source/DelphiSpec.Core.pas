@@ -13,7 +13,7 @@ procedure RegisterStepDefinitionsClass(StepDefinitionsClass: TStepDefinitionsCla
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.IOUtils, System.Rtti, Generics.Collections,
+  SysUtils, Classes, IOUtils, Rtti, Generics.Collections,
   TestFramework, DelphiSpec.Scenario, DelphiSpec.Parser, DelphiSpec.Attributes;
 
 type
@@ -83,15 +83,15 @@ var
   RttiType: TRttiType;
   RttiAttr: TCustomAttribute;
 begin
-  __StepDefsClassList.Add(StepDefinitionsClass.ClassName.ToLower, StepDefinitionsClass);
+  __StepDefsClassList.Add(AnsiLowerCase(StepDefinitionsClass.ClassName), StepDefinitionsClass);
 
   RttiContext := TRttiContext.Create;
   try
     RttiType := RttiContext.GetType(StepDefinitionsClass);
 
     for RttiAttr in RttiType.GetAttributes do
-      if RttiAttr is _FeatureAttribute then
-        __StepDefsClassList.Add(_FeatureAttribute(RttiAttr).Text.ToLower, StepDefinitionsClass);
+      if RttiAttr is FeatureAttribute then
+        __StepDefsClassList.Add(AnsiLowerCase(FeatureAttribute(RttiAttr).Text), StepDefinitionsClass);
   finally
     RttiContext.Free;
   end;
@@ -99,7 +99,7 @@ end;
 
 function GetStepDefinitionsClass(const Name: string): TStepDefinitionsClass;
 begin
-  Result := __StepDefsClassList[Name.ToLower];
+  Result := __StepDefsClassList[AnsiLowerCase(Name)];
 end;
 
 { TDelphiSpecTestCase }

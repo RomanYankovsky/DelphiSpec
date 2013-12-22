@@ -3,7 +3,7 @@ unit DelphiSpec.Parser;
 interface
 
 uses
-  System.SysUtils, System.Classes, Generics.Collections, Xml.XmlIntf,
+  SysUtils, Classes, Generics.Collections, XmlIntf,
   DelphiSpec.Scenario, DelphiSpec.StepDefinitions;
 
 type
@@ -62,7 +62,7 @@ implementation
 {$R DelphiSpecI18n.res}
 
 uses
-  System.Types, Xml.XmlDoc, DelphiSpec.Core;
+  StrUtils, Types, XmlDoc, DelphiSpec.Core;
 
 const
   sFeature = 'Feature';
@@ -200,7 +200,7 @@ end;
 procedure TDelphiSpecParser.PassEmptyLines;
 begin
   while not FReader.Eof do
-    if Trim(FReader.PeekLine).IsEmpty then
+    if Trim(FReader.PeekLine) = '' then
       FReader.ReadLine
     else
       Break;
@@ -299,7 +299,7 @@ var
 begin
   Result := False;
   for I := 0 to FLangNode.ChildNodes.Count - 1 do
-    if (FLangNode.ChildNodes[I].NodeName = StepKind) and S.StartsWith(FLangNode.ChildNodes[I].NodeValue, True) then
+    if (FLangNode.ChildNodes[I].NodeName = StepKind) and StartsText(FLangNode.ChildNodes[I].NodeValue, S) then
     begin
       Result := True;
       Break;
@@ -313,11 +313,11 @@ var
 begin
   Result := '';
   for I := 0 to FLangNode.ChildNodes.Count - 1 do
-    if (FLangNode.ChildNodes[I].NodeName = StepKind) and S.StartsWith(FLangNode.ChildNodes[I].NodeValue, True) then
+    if (FLangNode.ChildNodes[I].NodeName = StepKind) and StartsText(FLangNode.ChildNodes[I].NodeValue, S) then
     begin
       StepName := FLangNode.ChildNodes[I].NodeValue;
 
-      Result := S.Substring(StepName.Length + 1).Trim;
+      Result := Trim(Copy(S, Length(StepName) + 1));
       Break;
     end;
 end;
