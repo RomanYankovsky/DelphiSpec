@@ -128,18 +128,17 @@ var
   I: Integer;
   RttiField: TRttiField;
   Values: TArray<TValue>;
-  TmpArr: packed array of Byte;
   ElementType: TRttiType;
 begin
   ElementType := (ParamType as TRttiDynamicArrayType).ElementType;
-  SetLength(TmpArr, ElementType.TypeSize);
 
   SetLength(Values, DataTable.Count);
   for I := 0 to DataTable.Count - 1 do
   begin
-    TValue.Make(@TmpArr[0], ElementType.Handle, Values[I]);
-    for RttiField in ElementType.AsRecord.GetDeclaredFields do
-      RttiField.SetValue(Values[I].GetReferenceToRawData, ConvertParamValue(DataTable[RttiField.Name][I], RttiField.FieldType));
+    TValue.Make(nil, ElementType.Handle, Values[I]);
+    for RttiField in ElementType.AsRecord.GetFields do
+      RttiField.SetValue(Values[I].GetReferenceToRawData,
+        ConvertParamValue(DataTable[RttiField.Name][I], RttiField.FieldType));
   end;
 
   Result := TValue.FromArray(ParamType.Handle, Values);
