@@ -38,7 +38,6 @@ type
 
   TDelphiSpecParser = class
   private
-    FFeatures: TDictionary<string, TObjectList<TScenario>>;
     FReader: TDelphiSpecFileReader;
     FLanguages: TDelphiSpecLanguages;
 
@@ -46,11 +45,11 @@ type
     procedure PassEmptyLines;
     function TryReadDataTable: IDelphiSpecDataTable;
 
-    procedure FeatureNode;
-    procedure ScenarioNode(StepDefsClass: TStepDefinitionsClass; Scenarios: TObjectList<TScenario>);
-    procedure GivenNode(StepDefsClass: TStepDefinitionsClass; Scenario: TScenario; Scenarios: TObjectList<TScenario>);
-    procedure WhenNode(StepDefsClass: TStepDefinitionsClass; Scenario: TScenario; Scenarios: TObjectList<TScenario>);
-    procedure ThenNode(StepDefsClass: TStepDefinitionsClass; Scenario: TScenario; Scenarios: TObjectList<TScenario>);
+    procedure FeatureNode(Scenarios: TObjectList<TScenario>; StepDefsClass: TStepDefinitionsClass);
+    procedure ScenarioNode(Scenario: TScenario);
+    procedure GivenNode(Scenario: TScenario);
+    procedure WhenNode(Scenario: TScenario);
+    procedure ThenNode(Scenario: TScenario);
   public
     constructor Create(const LangCode: string);
     destructor Destroy; override;
@@ -135,23 +134,33 @@ end;
 procedure TDelphiSpecParser.Execute(const FileName: string;
   Features: TDictionary<string, TObjectList<TScenario>>);
 var
-  Command: string;
+  Command, FeatureName: string;
+  Scenarios: TObjectList<TScenario>;
 begin
-  FFeatures := Features;
   FReader.LoadFromFile(FileName);
 
   PassEmptyLines;
-  if FReader.Eof then
-    Exit;
 
-  Command := Trim(FReader.PeekLine);
-  if FLanguages.StartsWith(Command, sFeature) then
-    FeatureNode
-  else
-    raise EDelphiSpecSyntaxError.Create('Syntax Error!');
+  while not FReader.Eof do
+  begin
+    Command := Trim(FReader.ReadLine);
+    if not FLanguages.StartsWith(Command, sFeature) then
+      Break;
+
+    FeatureName := FLanguages.StepSubstring(Command, sFeature);
+    Scenarios := TObjectList<TScenario>.Create(False);
+    Features.Add(FeatureName, Scenarios);
+
+    FeatureNode(Scenarios, GetStepDefinitionsClass(FeatureName));
+  end;
+
+  if not FReader.Eof then
+    raise EDelphiSpecSyntaxError.Create('Syntax Error');
 end;
 
 function TDelphiSpecParser.TryReadDataTable: IDelphiSpecDataTable;
+const
+  TableDelimeter = '|';
 
   function StrToArray(const S: string): TStringDynArray;
   var
@@ -159,7 +168,7 @@ function TDelphiSpecParser.TryReadDataTable: IDelphiSpecDataTable;
     TrimS: string;
   begin
     TrimS := Trim(S);
-    Result := SplitString(Copy(TrimS, 2, Length(TrimS) - 2), '|');
+    Result := SplitString(Copy(TrimS, 2, Length(TrimS) - 2), TableDelimeter);
 
     for I := Low(Result) to High(Result) do
       Result[I] := Trim(Result[I]);
@@ -167,7 +176,7 @@ function TDelphiSpecParser.TryReadDataTable: IDelphiSpecDataTable;
 
   function TableInNextLine: Boolean;
   begin
-    Result := (not FReader.Eof) and StartsText('|', Trim(FReader.PeekLine));
+    Result := (not FReader.Eof) and StartsText(TableDelimeter, Trim(FReader.PeekLine));
   end;
 
   function ReadDataTable: IDelphiSpecDataTable;
@@ -189,32 +198,28 @@ begin
     Result := nil;
 end;
 
-procedure TDelphiSpecParser.FeatureNode;
+procedure TDelphiSpecParser.FeatureNode(Scenarios: TObjectList<TScenario>; StepDefsClass: TStepDefinitionsClass);
 var
   Command: string;
-  FeatureName: string;
-  Scenarios: TObjectList<TScenario>;
-  StepDefsClass: TStepDefinitionsClass;
+  Scenario: TScenario;
 begin
-  Command := Trim(FReader.ReadLine);
-  FeatureName := FLanguages.StepSubstring(Command, sFeature);
-  StepDefsClass := GetStepDefinitionsClass(FeatureName);
-
-  Scenarios := TObjectList<TScenario>.Create(False);
-  FFeatures.Add(FeatureName, Scenarios);
-
   PassEmptyLines;
   CheckEof;
-  Command := Trim(FReader.PeekLine);
 
-  if FLanguages.StartsWith(Command, sScenario) then
-    ScenarioNode(StepDefsClass, Scenarios)
-  else
-    raise EDelphiSpecSyntaxError.Create('Syntax Error!');
+  while not FReader.Eof do
+  begin
+    Command := Trim(FReader.ReadLine);
+    if not FLanguages.StartsWith(Command, sScenario) then
+      Break;
+
+    Scenario := TScenario.Create(FLanguages.StepSubstring(Command, sScenario), StepDefsClass);
+    Scenarios.Add(Scenario);
+
+    ScenarioNode(Scenario);
+  end;
 end;
 
-procedure TDelphiSpecParser.GivenNode(StepDefsClass: TStepDefinitionsClass; Scenario: TScenario;
-   Scenarios: TObjectList<TScenario>);
+procedure TDelphiSpecParser.GivenNode(Scenario: TScenario);
 var
   Command: string;
 begin
@@ -223,7 +228,9 @@ begin
   if FLanguages.StartsWith(Command, sGiven) then
     Scenario.AddGiven(FLanguages.StepSubstring(Command, sGiven), TryReadDataTable)
   else if FLanguages.StartsWith(Command, sAnd) then
-    Scenario.AddGiven(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable);
+    Scenario.AddGiven(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable)
+  else
+    raise EDelphiSpecSyntaxError.Create('Syntax Error');
 
   PassEmptyLines;
   CheckEof;
@@ -231,11 +238,7 @@ begin
   Command := Trim(FReader.PeekLine);
 
   if FLanguages.StartsWith(Command, sAnd) then
-    GivenNode(StepDefsClass, Scenario, Scenarios)
-  else if FLanguages.StartsWith(Command, sWhen) then
-    WhenNode(StepDefsClass, Scenario, Scenarios)
-  else
-    raise EDelphiSpecSyntaxError.Create('Syntax Error!');
+    GivenNode(Scenario);
 end;
 
 procedure TDelphiSpecParser.PassEmptyLines;
@@ -247,28 +250,17 @@ begin
       Break;
 end;
 
-procedure TDelphiSpecParser.ScenarioNode(StepDefsClass: TStepDefinitionsClass;
-  Scenarios: TObjectList<TScenario>);
-var
-  Command: string;
-  Scenario: TScenario;
+procedure TDelphiSpecParser.ScenarioNode(Scenario: TScenario);
 begin
-  Command := Trim(FReader.ReadLine);
-  Scenario := TScenario.Create(FLanguages.StepSubstring(Command, sScenario), StepDefsClass);
-  Scenarios.Add(Scenario);
-
   PassEmptyLines;
   CheckEof;
-  Command := Trim(FReader.PeekLine);
 
-  if FLanguages.StartsWith(Command, sGiven) then
-    GivenNode(StepDefsClass, Scenario, Scenarios)
-  else
-    raise EDelphiSpecSyntaxError.Create('Syntax Error!');
+  GivenNode(Scenario);
+  WhenNode(Scenario);
+  ThenNode(Scenario);
 end;
 
-procedure TDelphiSpecParser.ThenNode(StepDefsClass: TStepDefinitionsClass; Scenario: TScenario;
-  Scenarios: TObjectList<TScenario>);
+procedure TDelphiSpecParser.ThenNode(Scenario: TScenario);
 var
   Command: string;
 begin
@@ -277,7 +269,9 @@ begin
   if FLanguages.StartsWith(Command, sThen) then
     Scenario.AddThen(FLanguages.StepSubstring(Command, sThen), TryReadDataTable)
   else if FLanguages.StartsWith(Command, sAnd) then
-    Scenario.AddThen(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable);
+    Scenario.AddThen(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable)
+  else
+    raise EDelphiSpecSyntaxError.Create('Syntax Error');
 
   PassEmptyLines;
   if FReader.Eof then
@@ -286,17 +280,10 @@ begin
   Command := Trim(FReader.PeekLine);
 
   if FLanguages.StartsWith(Command, sAnd) then
-    ThenNode(StepDefsClass, Scenario, Scenarios)
-  else if FLanguages.StartsWith(Command, sScenario) then
-    ScenarioNode(StepDefsClass, Scenarios)
-  else if FLanguages.StartsWith(Command, sFeature) then
-    FeatureNode
-  else
-    raise EDelphiSpecSyntaxError.Create('Syntax Error!');
+    ThenNode(Scenario);
 end;
 
-procedure TDelphiSpecParser.WhenNode(StepDefsClass: TStepDefinitionsClass; Scenario: TScenario;
-  Scenarios: TObjectList<TScenario>);
+procedure TDelphiSpecParser.WhenNode(Scenario: TScenario);
 var
   Command: string;
 begin
@@ -305,18 +292,16 @@ begin
   if FLanguages.StartsWith(Command, sWhen) then
     Scenario.AddWhen(FLanguages.StepSubstring(Command, sWhen), TryReadDataTable)
   else if FLanguages.StartsWith(Command, sAnd) then
-    Scenario.AddWhen(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable);
+    Scenario.AddWhen(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable)
+  else
+    raise EDelphiSpecSyntaxError.Create('Syntax Error');
 
   PassEmptyLines;
   CheckEof;
   Command := Trim(FReader.PeekLine);
 
   if FLanguages.StartsWith(Command, sAnd) then
-    WhenNode(StepDefsClass, Scenario, Scenarios)
-  else if FLanguages.StartsWith(Command, sThen) then
-    ThenNode(StepDefsClass, Scenario, Scenarios)
-  else
-    raise EDelphiSpecSyntaxError.Create('Syntax Error!');
+    WhenNode(Scenario);
 end;
 
 { TDelphiSpecLanguages }
