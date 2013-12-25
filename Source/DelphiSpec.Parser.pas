@@ -43,9 +43,11 @@ type
 
     procedure CheckEof;
     procedure PassEmptyLines;
+
     function TryReadDataTable: IDelphiSpecDataTable;
 
-    procedure FeatureNode(Scenarios: TObjectList<TScenario>; StepDefsClass: TStepDefinitionsClass);
+    procedure FeatureNode(Feature: TFeature);
+    procedure BackgroundNode(Feature: TFeature);
     procedure ScenarioNode(Scenario: TScenario);
     procedure GivenNode(Scenario: TScenario);
     procedure WhenNode(Scenario: TScenario);
@@ -54,7 +56,7 @@ type
     constructor Create(const LangCode: string);
     destructor Destroy; override;
 
-    procedure Execute(const FileName: string; Features: TDictionary<string, TObjectList<TScenario>>);
+    procedure Execute(const FileName: string; Features: TObjectList<TFeature>);
   end;
 
 implementation
@@ -66,6 +68,7 @@ uses
 
 const
   sFeature = 'Feature';
+  sBackground = 'Background';
   sScenario = 'Scenario';
   sGiven = 'Given';
   sAnd = 'And';
@@ -111,6 +114,19 @@ end;
 
 { TDelphiSpecParser }
 
+procedure TDelphiSpecParser.BackgroundNode(Feature: TFeature);
+begin
+  if Assigned(Feature.Background) then
+    raise EDelphiSpecSyntaxError.Create('Syntax Error');
+
+  PassEmptyLines;
+  CheckEof;
+
+  Feature.Background := TScenario.Create(nil, '');
+
+  GivenNode(Feature.Background);
+end;
+
 procedure TDelphiSpecParser.CheckEof;
 begin
   if FReader.Eof then
@@ -132,10 +148,10 @@ begin
 end;
 
 procedure TDelphiSpecParser.Execute(const FileName: string;
-  Features: TDictionary<string, TObjectList<TScenario>>);
+  Features: TObjectList<TFeature>);
 var
   Command, FeatureName: string;
-  Scenarios: TObjectList<TScenario>;
+  Feature: TFeature;
 begin
   FReader.LoadFromFile(FileName);
 
@@ -143,15 +159,18 @@ begin
 
   while not FReader.Eof do
   begin
+    PassEmptyLines;
+    CheckEof;
+
     Command := Trim(FReader.ReadLine);
     if not FLanguages.StartsWith(Command, sFeature) then
       Break;
 
     FeatureName := FLanguages.StepSubstring(Command, sFeature);
-    Scenarios := TObjectList<TScenario>.Create(False);
-    Features.Add(FeatureName, Scenarios);
+    Feature := TFeature.Create(FeatureName, GetStepDefinitionsClass(FeatureName));
+    Features.Add(Feature);
 
-    FeatureNode(Scenarios, GetStepDefinitionsClass(FeatureName));
+    FeatureNode(Feature);
   end;
 
   if not FReader.Eof then
@@ -198,24 +217,26 @@ begin
     Result := nil;
 end;
 
-procedure TDelphiSpecParser.FeatureNode(Scenarios: TObjectList<TScenario>; StepDefsClass: TStepDefinitionsClass);
+procedure TDelphiSpecParser.FeatureNode(Feature: TFeature);
 var
   Command: string;
   Scenario: TScenario;
 begin
-  PassEmptyLines;
-  CheckEof;
-
   while not FReader.Eof do
   begin
+    PassEmptyLines;
+    CheckEof;
+
     Command := Trim(FReader.ReadLine);
-    if not FLanguages.StartsWith(Command, sScenario) then
+    if FLanguages.StartsWith(Command, sBackground) then
+      BackgroundNode(Feature)
+    else if FLanguages.StartsWith(Command, sScenario) then
+    begin
+      Scenario := TScenario.Create(Feature, FLanguages.StepSubstring(Command, sScenario));
+      Feature.Scenarios.Add(Scenario);
+      ScenarioNode(Scenario);
+    end else
       Break;
-
-    Scenario := TScenario.Create(FLanguages.StepSubstring(Command, sScenario), StepDefsClass);
-    Scenarios.Add(Scenario);
-
-    ScenarioNode(Scenario);
   end;
 end;
 

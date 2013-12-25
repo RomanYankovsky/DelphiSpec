@@ -7,6 +7,24 @@ uses
   DelphiSpec.DataTable, Rtti;
 
 type
+  TScenario = class; // forward declaration
+
+  TFeature = class
+  private
+    FName: string;
+    FBackground: TScenario;
+    FScenarios: TObjectList<TScenario>;
+    FStepDefsClass: TStepDefinitionsClass;
+  public
+    constructor Create(const Name: string; StepDefsClass: TStepDefinitionsClass); reintroduce;
+    destructor Destroy; override;
+
+    property Background: TScenario read FBackground write FBackground;
+    property Name: string read FName;
+    property Scenarios: TObjectList<TScenario> read FScenarios;
+    property StepDefinitionsClass: TStepDefinitionsClass read FStepDefsClass;
+  end;
+
   EScenarioException = class(Exception);
   TScenario = class
   private type
@@ -22,7 +40,7 @@ type
     end;
   private
     FName: string;
-    FStepDefs: TStepDefinitions;
+    FFeature: TFeature;
 
     FGiven: TObjectList<TStep>;
     FWhen: TObjectList<TStep>;
@@ -31,21 +49,22 @@ type
     function ConvertDataTable(DataTable: IDelphiSpecDataTable; ParamType: TRttiType): TValue;
     function ConvertParamValue(const Value: string; ParamType: TRttiType): TValue;
 
-    procedure FindStep(Step: TStep; AttributeClass: TDelphiSpecStepAttributeClass);
-    function InvokeStep(Step: TStep; AttributeClass: TDelphiSpecStepAttributeClass;
+    procedure FindStep(Step: TStep; StepDefs: TStepDefinitions; AttributeClass: TDelphiSpecStepAttributeClass);
+    function InvokeStep(Step: TStep; StepDefs: TStepDefinitions; AttributeClass: TDelphiSpecStepAttributeClass;
       RttiMethod: TRttiMethod; const Value: string): Boolean;
     function PrepareStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass;
       const MethodName: string; const Params: TArray<TRttiParameter>): string;
   public
-    constructor Create(const Name: string; StepDefinitionsClass: TStepDefinitionsClass); reintroduce;
+    constructor Create(Parent: TFeature; const Name: string); reintroduce;
     destructor Destroy; override;
 
     procedure AddGiven(const Value: string; DataTable: IDelphiSpecDataTable);
     procedure AddWhen(const Value: string; DataTable: IDelphiSpecDataTable);
     procedure AddThen(const Value: string; DataTable: IDelphiSpecDataTable);
 
-    procedure Execute;
+    procedure Execute(StepDefs: TStepDefinitions);
 
+    property Feature: TFeature read FFeature;
     property Name: string read FName;
   end;
 
@@ -53,6 +72,24 @@ implementation
 
 uses
   TypInfo, RegularExpressions, TestFramework, StrUtils, Types;
+
+{ TFeature }
+
+constructor TFeature.Create(const Name: string; StepDefsClass: TStepDefinitionsClass);
+begin
+  inherited Create;
+  FName := Name;
+  FBackground := nil;
+  FScenarios := TObjectList<TScenario>.Create(False);
+  FStepDefsClass := StepDefsClass;
+end;
+
+destructor TFeature.Destroy;
+begin
+  FreeAndNil(FBackground);
+  FScenarios.Free;
+  inherited;
+end;
 
 { TScenario.TScenarioStep }
 
@@ -110,12 +147,11 @@ begin
   end;
 end;
 
-constructor TScenario.Create(const Name: string;
-  StepDefinitionsClass: TStepDefinitionsClass);
+constructor TScenario.Create(Parent: TFeature; const Name: string);
 begin
   inherited Create;
+  FFeature := Parent;
   FName := Name;
-  FStepDefs := StepDefinitionsClass.Create;
 
   FGiven := TObjectList<TStep>.Create(True);
   FWhen := TObjectList<TStep>.Create(True);
@@ -146,8 +182,6 @@ end;
 
 destructor TScenario.Destroy;
 begin
-  FStepDefs.Free;
-
   FGiven.Free;
   FWhen.Free;
   FThen.Free;
@@ -155,26 +189,22 @@ begin
   inherited;
 end;
 
-procedure TScenario.Execute;
+procedure TScenario.Execute(StepDefs: TStepDefinitions);
 var
   Step: TStep;
 begin
-  FStepDefs.SetUp;
-  try
-    for Step in FGiven do
-      FindStep(Step, Given_Attribute);
+  for Step in FGiven do
+    FindStep(Step, StepDefs, Given_Attribute);
 
-    for Step in FWhen do
-      FindStep(Step, When_Attribute);
+  for Step in FWhen do
+    FindStep(Step, StepDefs, When_Attribute);
 
-    for Step in FThen do
-      FindStep(Step, Then_Attribute);
-  finally
-    FStepDefs.TearDown;
-  end;
+  for Step in FThen do
+    FindStep(Step, StepDefs, Then_Attribute);
 end;
 
-procedure TScenario.FindStep(Step: TStep; AttributeClass: TDelphiSpecStepAttributeClass);
+procedure TScenario.FindStep(Step: TStep; StepDefs: TStepDefinitions;
+  AttributeClass: TDelphiSpecStepAttributeClass);
 var
   RttiContext: TRttiContext;
   RttiType: TRttiType;
@@ -183,17 +213,17 @@ var
 begin
   RttiContext := TRttiContext.Create;
   try
-    RttiType := RttiContext.GetType(FStepDefs.ClassInfo);
+    RttiType := RttiContext.GetType(StepDefs.ClassInfo);
 
     for RttiMethod in RttiType.GetMethods do
     begin
       for RttiAttr in RttiMethod.GetAttributes do
         if RttiAttr is AttributeClass then
-          if InvokeStep(Step, AttributeClass, RttiMethod, TDelphiSpecAttribute(RttiAttr).Text) then
+          if InvokeStep(Step, StepDefs, AttributeClass, RttiMethod, TDelphiSpecAttribute(RttiAttr).Text) then
             Exit;
 
       if StartsText(AttributeClass.Prefix, RttiMethod.Name) then
-        if InvokeStep(Step, AttributeClass, RttiMethod, '') then
+        if InvokeStep(Step, StepDefs, AttributeClass, RttiMethod, '') then
           Exit;
     end;
   finally
@@ -203,8 +233,9 @@ begin
   raise ETestFailure.CreateFmt('Step is not implemented yet: "%s" (%s)', [Step, AttributeClass.ClassName]);
 end;
 
-function TScenario.InvokeStep(Step: TStep; AttributeClass: TDelphiSpecStepAttributeClass;
-  RttiMethod: TRttiMethod; const Value: string): Boolean;
+function TScenario.InvokeStep(Step: TStep; StepDefs: TStepDefinitions;
+  AttributeClass: TDelphiSpecStepAttributeClass; RttiMethod: TRttiMethod;
+  const Value: string): Boolean;
 var
   RegExMatch: TMatch;
   I: Integer;
@@ -231,7 +262,7 @@ begin
   for I := 0 to RegExMatch.Groups.Count - 2 do
     Values[I] := ConvertParamValue(RegExMatch.Groups[I + 1].Value, Params[I].ParamType);
 
-  RttiMethod.Invoke(FStepDefs, Values);
+  RttiMethod.Invoke(StepDefs, Values);
   Result := True;
 end;
 

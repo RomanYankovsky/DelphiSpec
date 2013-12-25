@@ -15,6 +15,7 @@ type
       Id: Integer;
     end;
   private
+    FName, FPassword: string;
     FUsers: TList<TUserInfo>;
     FAccessGranted: Boolean;
   public
@@ -23,8 +24,13 @@ type
 
     procedure Given_users_exist(Table: TArray<TUserInfo>);
 
-    [When_('I login with "(.*)" and "(.*)"')]
-    procedure TryLogin(const Name, Password: string);
+    [Given_('my name is "(.*)"')]
+    procedure EnterName(const Value: string);
+
+    [Given_('my password is "(.*)"')]
+    procedure EnterPassword(const Value: string);
+
+    procedure When_I_login;
 
     procedure Then_I_have_access_to_private_messages;
     procedure Then_Access_Denied;
@@ -36,6 +42,16 @@ uses
   DelphiSpec.Core, TestFramework;
 
 { TSampleAccountSteps }
+
+procedure TSampleAccountSteps.EnterName(const Value: string);
+begin
+  FName := Value;
+end;
+
+procedure TSampleAccountSteps.EnterPassword(const Value: string);
+begin
+  FPassword := Value;
+end;
 
 procedure TSampleAccountSteps.Given_users_exist(Table: TArray<TUserInfo>);
 var
@@ -68,12 +84,12 @@ begin
     raise ETestFailure.Create('Access denied');
 end;
 
-procedure TSampleAccountSteps.TryLogin(const Name, Password: string);
+procedure TSampleAccountSteps.When_I_login;
 var
   I: Integer;
 begin
   for I := 0 to FUsers.Count - 1 do
-    if (FUsers[I].Name = Name) and (FUsers[I].Password = Password) then
+    if (FUsers[I].Name = FName) and (FUsers[I].Password = FPassword) then
     begin
       FAccessGranted := True;
       Break;

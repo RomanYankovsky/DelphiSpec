@@ -2,6 +2,7 @@
 <DelphiSpecLanguages>
   <EN>
     <Feature>Feature:</Feature>
+    <Background>Background:</Background>
     <Scenario>Scenario:</Scenario>
     <Given>Given</Given>
     <When>When</When>
@@ -13,6 +14,8 @@
     <Feature>Функция:</Feature>
     <Feature>Функционал:</Feature>
     <Scenario>Сценарий:</Scenario>
+    <Background>Предыстория:</Background>
+    <Background>Контекст:</Background>
     <Given>Допустим</Given>
     <Given>Дано</Given>
     <When>Когда</When>
