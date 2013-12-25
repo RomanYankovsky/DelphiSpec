@@ -14,6 +14,13 @@ Scenario: Correct Login
 
 Scenario: Incorrect Login
   Given my name is "Roman"
+    And my password is "pass2"
+  When I login
+  Then access denied
+
+Scenario: Remove user
+  Given my name is "Roman"
     And my password is "pass1"
+    But user "Roman" has been removed
   When I login
   Then access denied

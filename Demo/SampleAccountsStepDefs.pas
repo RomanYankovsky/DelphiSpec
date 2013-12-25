@@ -30,6 +30,9 @@ type
     [Given_('my password is "(.*)"')]
     procedure EnterPassword(const Value: string);
 
+    [Given_('user "(.*)" has been removed')]
+    procedure RemoveUser(const Name: string);
+
     procedure When_I_login;
 
     procedure Then_I_have_access_to_private_messages;
@@ -59,6 +62,18 @@ var
 begin
   for I := Low(Table) to High(Table) do
     FUsers.Add(Table[I]);
+end;
+
+procedure TSampleAccountSteps.RemoveUser(const Name: string);
+var
+  I: Integer;
+begin
+  for I := 0 to FUsers.Count - 1 do
+    if (FUsers[I].Name = FName) then
+    begin
+      FUsers.Delete(I);
+      Break;
+    end;
 end;
 
 procedure TSampleAccountSteps.SetUp;
