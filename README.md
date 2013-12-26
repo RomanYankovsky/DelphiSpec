@@ -5,7 +5,7 @@ written in plain language, they can be read by anyone on your team. Because they
 read by anyone, you can use them to help improve communication, collaboration and trust on
 your team.
 
-DelphiSpec was inspired by [Cucumber](http://cukes.info/) and is using [Gherkin](https://github.com/cucumber/gherkin/wiki).
+DelphiSpec was inspired by [Cucumber](http://cukes.info/) and is using its own implementation of [Gherkin](https://github.com/cucumber/gherkin/wiki).
 
 ## Copyright
 
