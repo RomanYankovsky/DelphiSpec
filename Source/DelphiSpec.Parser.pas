@@ -23,6 +23,7 @@ type
     FLinePos: Integer;
     FLines: TStringList;
     function GetEof: Boolean;
+    function GetLineNo: Integer;
   public
     constructor Create;
     destructor Destroy; override;
@@ -32,9 +33,18 @@ type
     function ReadLine: string;
 
     property Eof: Boolean read GetEof;
+    property LineNo: Integer read GetLineNo;
   end;
 
-  EDelphiSpecSyntaxError = class(Exception);
+  EDelphiSpecSyntaxError = class(Exception)
+  private
+    FLineNo: Integer;
+  public
+    constructor CreateAtLine(LineNo: Integer); overload;
+    property LineNo: Integer read FLineNo;
+  end;
+
+  EDelphiSpecUnexpectedEof = class(Exception);
 
   TDelphiSpecParser = class
   private
@@ -43,6 +53,7 @@ type
 
     procedure CheckEof;
     procedure PassEmptyLines;
+    procedure RaiseSyntaxError;
 
     function TryReadDataTable: IDataTable;
 
@@ -99,6 +110,11 @@ begin
   Result := (FLinePos = FLines.Count);
 end;
 
+function TDelphiSpecFileReader.GetLineNo: Integer;
+begin
+  Result := FLinePos;
+end;
+
 procedure TDelphiSpecFileReader.LoadFromFile(const FileName: string);
 begin
   FLines.LoadFromFile(FileName);
@@ -121,7 +137,7 @@ end;
 procedure TDelphiSpecParser.BackgroundNode(Feature: TFeature);
 begin
   if Assigned(Feature.Background) then
-    raise EDelphiSpecSyntaxError.Create('Syntax Error');
+    RaiseSyntaxError;
 
   PassEmptyLines;
   CheckEof;
@@ -134,7 +150,7 @@ end;
 procedure TDelphiSpecParser.CheckEof;
 begin
   if FReader.Eof then
-    raise EDelphiSpecSyntaxError.Create('Unexpected end of file');
+    raise EDelphiSpecUnexpectedEof.Create('Unexpected end of file');
 end;
 
 constructor TDelphiSpecParser.Create(const LangCode: string);
@@ -160,7 +176,7 @@ begin
 
   Command := Trim(FReader.ReadLine);
   if not FLanguages.StartsWith(Command, sExamples) then
-    raise EDelphiSpecSyntaxError.Create('Syntax Error');
+    RaiseSyntaxError;
 
   ScenarioOutline.SetExamples(TryReadDataTable);
 end;
@@ -173,8 +189,6 @@ var
 begin
   FReader.LoadFromFile(FileName);
 
-  PassEmptyLines;
-
   while not FReader.Eof do
   begin
     PassEmptyLines;
@@ -182,7 +196,7 @@ begin
 
     Command := Trim(FReader.ReadLine);
     if not FLanguages.StartsWith(Command, sFeature) then
-      Break;
+      RaiseSyntaxError;
 
     FeatureName := FLanguages.StepSubstring(Command, sFeature);
     Feature := TFeature.Create(FeatureName, GetStepDefinitionsClass(FeatureName));
@@ -190,9 +204,6 @@ begin
 
     FeatureNode(Feature);
   end;
-
-  if not FReader.Eof then
-    raise EDelphiSpecSyntaxError.Create('Syntax Error');
 end;
 
 function TDelphiSpecParser.TryReadDataTable: IDataTable;
@@ -269,7 +280,7 @@ begin
       CommentsAllowed := False;
     end
     else if not CommentsAllowed then
-      raise EDelphiSpecSyntaxError.Create('Syntax Error');
+      RaiseSyntaxError;
   end;
 end;
 
@@ -284,7 +295,7 @@ begin
   else if FLanguages.StartsWith(Command, sAnd) then
     Scenario.AddGiven(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable)
   else
-    raise EDelphiSpecSyntaxError.Create('Syntax Error');
+    RaiseSyntaxError;
 
   PassEmptyLines;
   CheckEof;
@@ -302,6 +313,11 @@ begin
       FReader.ReadLine
     else
       Break;
+end;
+
+procedure TDelphiSpecParser.RaiseSyntaxError;
+begin
+  raise EDelphiSpecSyntaxError.CreateAtLine(FReader.LineNo);
 end;
 
 procedure TDelphiSpecParser.ScenarioNode(Scenario: TScenario);
@@ -337,7 +353,7 @@ begin
   else if FLanguages.StartsWith(Command, sAnd) then
     Scenario.AddThen(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable)
   else
-    raise EDelphiSpecSyntaxError.Create('Syntax Error');
+    RaiseSyntaxError;
 
   PassEmptyLines;
   if FReader.Eof then
@@ -360,7 +376,7 @@ begin
   else if FLanguages.StartsWith(Command, sAnd) then
     Scenario.AddWhen(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable)
   else
-    raise EDelphiSpecSyntaxError.Create('Syntax Error');
+    RaiseSyntaxError;
 
   PassEmptyLines;
   CheckEof;
@@ -414,6 +430,14 @@ begin
       Result := Trim(Copy(S, Length(StepName) + 1));
       Break;
     end;
+end;
+
+{ EDelphiSpecSyntaxError }
+
+constructor EDelphiSpecSyntaxError.CreateAtLine(LineNo: Integer);
+begin
+  inherited Create('Syntax error');
+  FLineNo := LineNo;
 end;
 
 end.

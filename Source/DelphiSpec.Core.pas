@@ -62,12 +62,20 @@ begin
     Parser := TDelphiSpecParser.Create(LangCode);
     try
       for FileName in TDirectory.GetFiles(Path, FileMask, SearchMode) do
+      try
         Parser.Execute(FileName, Result);
+      except
+        on E: EDelphiSpecSyntaxError do
+          raise Exception.CreateFmt('Syntax error: line %d at %s', [E.LineNo, FileName]);
+        on E: EDelphiSpecUnexpectedEof do
+          raise Exception.CreateFmt('Unexpected end of file at %s', [FileName]);
+      end;
     finally
       Parser.Free;
     end;
   except
     FreeAndNil(Result);
+    raise;
   end;
 end;
 
