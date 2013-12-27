@@ -8,12 +8,14 @@ uses
 
 type
   TScenario = class; // forward declaration
+  TScenarioOutline = class; // forward declaration;
 
   TFeature = class
   private
     FName: string;
     FBackground: TScenario;
     FScenarios: TObjectList<TScenario>;
+    FScenarioOutlines: TObjectList<TScenarioOutline>;
     FStepDefsClass: TStepDefinitionsClass;
   public
     constructor Create(const Name: string; StepDefsClass: TStepDefinitionsClass); reintroduce;
@@ -22,31 +24,28 @@ type
     property Background: TScenario read FBackground write FBackground;
     property Name: string read FName;
     property Scenarios: TObjectList<TScenario> read FScenarios;
+    property ScenarioOutlines: TObjectList<TScenarioOutline> read FScenarioOutlines;
     property StepDefinitionsClass: TStepDefinitionsClass read FStepDefsClass;
   end;
 
-  EScenarioException = class(Exception);
+  EScenarioStepException = class(Exception);
   TScenario = class
-  private type
+  protected type
     TStep = class
     strict private
       FValue: string;
-      FDataTable: IDelphiSpecDataTable;
+      FDataTable: IDataTable;
     public
-      constructor Create(const Value: string; DataTable: IDelphiSpecDataTable); reintroduce;
+      constructor Create(const Value: string; DataTable: IDataTable); reintroduce;
 
       property Value: string read FValue;
-      property DataTable: IDelphiSpecDataTable read FDataTable;
+      property DataTable: IDataTable read FDataTable;
     end;
-  private
+  strict private
     FName: string;
     FFeature: TFeature;
 
-    FGiven: TObjectList<TStep>;
-    FWhen: TObjectList<TStep>;
-    FThen: TObjectList<TStep>;
-
-    function ConvertDataTable(DataTable: IDelphiSpecDataTable; ParamType: TRttiType): TValue;
+    function ConvertDataTable(DataTable: IDataTable; ParamType: TRttiType): TValue;
     function ConvertParamValue(const Value: string; ParamType: TRttiType): TValue;
 
     procedure FindStep(Step: TStep; StepDefs: TStepDefinitions; AttributeClass: TDelphiSpecStepAttributeClass);
@@ -54,13 +53,17 @@ type
       RttiMethod: TRttiMethod; const Value: string): Boolean;
     function PrepareStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass;
       const MethodName: string; const Params: TArray<TRttiParameter>): string;
+  protected
+    FGiven: TObjectList<TStep>;
+    FWhen: TObjectList<TStep>;
+    FThen: TObjectList<TStep>;
   public
-    constructor Create(Parent: TFeature; const Name: string); reintroduce;
+    constructor Create(Parent: TFeature; const Name: string); reintroduce; virtual;
     destructor Destroy; override;
 
-    procedure AddGiven(const Value: string; DataTable: IDelphiSpecDataTable);
-    procedure AddWhen(const Value: string; DataTable: IDelphiSpecDataTable);
-    procedure AddThen(const Value: string; DataTable: IDelphiSpecDataTable);
+    procedure AddGiven(const Value: string; DataTable: IDataTable);
+    procedure AddWhen(const Value: string; DataTable: IDataTable);
+    procedure AddThen(const Value: string; DataTable: IDataTable);
 
     procedure Execute(StepDefs: TStepDefinitions);
 
@@ -68,10 +71,26 @@ type
     property Name: string read FName;
   end;
 
+  TScenarioOutline = class(TScenario)
+  private
+    FExamples: IDataTable;
+    FScenarios: TObjectList<TScenario>;
+    FScenariosReady: Boolean;
+    function GetScenarios: TObjectList<TScenario>;
+    procedure PrepareScenarios;
+  public
+    constructor Create(Parent: TFeature; const Name: string); override;
+    destructor Destroy; override;
+
+    procedure SetExamples(Examples: IDataTable);
+
+    property Scenarios: TObjectList<TScenario> read GetScenarios;
+  end;
+
 implementation
 
 uses
-  TypInfo, RegularExpressions, TestFramework, StrUtils, Types;
+  TypInfo, RegularExpressions, StrUtils, Types;
 
 { TFeature }
 
@@ -80,13 +99,15 @@ begin
   inherited Create;
   FName := Name;
   FBackground := nil;
-  FScenarios := TObjectList<TScenario>.Create(False);
+  FScenarios := TObjectList<TScenario>.Create(True);
+  FScenarioOutlines := TObjectList<TScenarioOutline>.Create(True);
   FStepDefsClass := StepDefsClass;
 end;
 
 destructor TFeature.Destroy;
 begin
   FreeAndNil(FBackground);
+  FScenarioOutlines.Free;
   FScenarios.Free;
   inherited;
 end;
@@ -94,7 +115,7 @@ end;
 { TScenario.TScenarioStep }
 
 constructor TScenario.TStep.Create(const Value: string;
-  DataTable: IDelphiSpecDataTable);
+  DataTable: IDataTable);
 begin
   inherited Create;
   FValue := Value;
@@ -103,17 +124,17 @@ end;
 
 { TScenario }
 
-procedure TScenario.AddGiven(const Value: string; DataTable: IDelphiSpecDataTable);
+procedure TScenario.AddGiven(const Value: string; DataTable: IDataTable);
 begin
   FGiven.Add(TStep.Create(Value, DataTable));
 end;
 
-procedure TScenario.AddThen(const Value: string; DataTable: IDelphiSpecDataTable);
+procedure TScenario.AddThen(const Value: string; DataTable: IDataTable);
 begin
   FThen.Add(TStep.Create(Value, DataTable));
 end;
 
-procedure TScenario.AddWhen(const Value: string; DataTable: IDelphiSpecDataTable);
+procedure TScenario.AddWhen(const Value: string; DataTable: IDataTable);
 begin
   FWhen.Add(TStep.Create(Value, DataTable));
 end;
@@ -158,7 +179,7 @@ begin
   FThen := TObjectList<TStep>.Create(True);
 end;
 
-function TScenario.ConvertDataTable(DataTable: IDelphiSpecDataTable;
+function TScenario.ConvertDataTable(DataTable: IDataTable;
   ParamType: TRttiType): TValue;
 var
   I: Integer;
@@ -168,8 +189,8 @@ var
 begin
   ElementType := (ParamType as TRttiDynamicArrayType).ElementType;
 
-  SetLength(Values, DataTable.Count);
-  for I := 0 to DataTable.Count - 1 do
+  SetLength(Values, DataTable.RowCount);
+  for I := 0 to DataTable.RowCount - 1 do
   begin
     TValue.Make(nil, ElementType.Handle, Values[I]);
     for RttiField in ElementType.AsRecord.GetFields do
@@ -230,7 +251,7 @@ begin
     RttiContext.Free;
   end;
 
-  raise ETestFailure.CreateFmt('Step is not implemented yet: "%s" (%s)', [Step, AttributeClass.ClassName]);
+  raise EScenarioStepException.CreateFmt('Step is not implemented: "%s" (%s)', [Step.Value, AttributeClass.ClassName]);
 end;
 
 function TScenario.InvokeStep(Step: TStep; StepDefs: TStepDefinitions;
@@ -257,7 +278,7 @@ begin
   end;
 
   if Length(Params) <> Length(Values) then
-    raise EScenarioException.CreateFmt('Parameter count does not match: "%s" (%s)', [Step.Value, AttributeClass.ClassName]);
+    raise EScenarioStepException.CreateFmt('Parameter count does not match: "%s" (%s)', [Step.Value, AttributeClass.ClassName]);
 
   for I := 0 to RegExMatch.Groups.Count - 2 do
     Values[I] := ConvertParamValue(RegExMatch.Groups[I + 1].Value, Params[I].ParamType);
@@ -285,6 +306,73 @@ begin
     end;
   end;
   Result := TRegEx.Replace(Result, '(\$[a-zA-Z0-9_]*)', '(.*)');
+end;
+
+{ TScenarioOutline }
+
+constructor TScenarioOutline.Create(Parent: TFeature; const Name: string);
+begin
+  inherited;
+  FScenariosReady := False;
+  FExamples := nil;
+  FScenarios := TObjectList<TScenario>.Create(False);
+end;
+
+destructor TScenarioOutline.Destroy;
+begin
+  FScenarios.Free;
+  inherited;
+end;
+
+function TScenarioOutline.GetScenarios: TObjectList<TScenario>;
+begin
+  if not FScenariosReady then
+  begin
+    PrepareScenarios;
+    FScenariosReady := True;
+  end;
+
+  Result := FScenarios;
+end;
+
+procedure TScenarioOutline.PrepareScenarios;
+
+  function PutValues(const Step: string; Index: Integer): string;
+  var
+    I: Integer;
+  begin
+    Result := Step;
+
+    for I := 0 to FExamples.ColCount - 1 do
+      Result := TRegEx.Replace(Result, '<' + FExamples.Names[I] + '>',
+        FExamples[FExamples.Names[I]][Index], [TRegExOption.roIgnoreCase]);
+  end;
+
+var
+  I: Integer;
+  Scenario: TScenario;
+  Step: TStep;
+begin
+  for I := 0 to FExamples.RowCount - 1 do
+  begin
+    Scenario := TScenario.Create(Feature, Name + Format(' [case %d]', [I + 1]));
+
+    for Step in FGiven do
+      Scenario.AddGiven(PutValues(Step.Value, I), Step.DataTable);
+
+    for Step in FWhen do
+      Scenario.AddWhen(PutValues(Step.Value, I), Step.DataTable);
+
+    for Step in FThen do
+      Scenario.AddThen(PutValues(Step.Value, I), Step.DataTable);
+
+    FScenarios.Add(Scenario);
+  end;
+end;
+
+procedure TScenarioOutline.SetExamples(Examples: IDataTable);
+begin
+  FExamples := Examples;
 end;
 
 end.

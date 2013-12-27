@@ -44,14 +44,16 @@ type
     procedure CheckEof;
     procedure PassEmptyLines;
 
-    function TryReadDataTable: IDelphiSpecDataTable;
+    function TryReadDataTable: IDataTable;
 
     procedure FeatureNode(Feature: TFeature);
     procedure BackgroundNode(Feature: TFeature);
     procedure ScenarioNode(Scenario: TScenario);
+    procedure ScenarioOutlineNode(ScenarioOutline: TScenarioOutline);
     procedure GivenNode(Scenario: TScenario);
     procedure WhenNode(Scenario: TScenario);
     procedure ThenNode(Scenario: TScenario);
+    procedure ExampleNode(ScenarioOutline: TScenarioOutline);
   public
     constructor Create(const LangCode: string);
     destructor Destroy; override;
@@ -70,10 +72,12 @@ const
   sFeature = 'Feature';
   sBackground = 'Background';
   sScenario = 'Scenario';
+  sScenarioOutline = 'ScenarioOutline';
   sGiven = 'Given';
   sAnd = 'And';
   sWhen = 'When';
   sThen = 'Then';
+  sExamples = 'Examples';
 
 { TDelphiSpecFileReader }
 
@@ -147,6 +151,20 @@ begin
   inherited;
 end;
 
+procedure TDelphiSpecParser.ExampleNode(ScenarioOutline: TScenarioOutline);
+var
+  Command: string;
+begin
+  PassEmptyLines;
+  CheckEof;
+
+  Command := Trim(FReader.ReadLine);
+  if not FLanguages.StartsWith(Command, sExamples) then
+    raise EDelphiSpecSyntaxError.Create('Syntax Error');
+
+  ScenarioOutline.SetExamples(TryReadDataTable);
+end;
+
 procedure TDelphiSpecParser.Execute(const FileName: string;
   Features: TObjectList<TFeature>);
 var
@@ -177,7 +195,7 @@ begin
     raise EDelphiSpecSyntaxError.Create('Syntax Error');
 end;
 
-function TDelphiSpecParser.TryReadDataTable: IDelphiSpecDataTable;
+function TDelphiSpecParser.TryReadDataTable: IDataTable;
 const
   TableDelimeter = '|';
 
@@ -198,11 +216,11 @@ const
     Result := (not FReader.Eof) and StartsText(TableDelimeter, Trim(FReader.PeekLine));
   end;
 
-  function ReadDataTable: IDelphiSpecDataTable;
+  function ReadDataTable: IDataTable;
   var
-    DataTable: TDelphiSpecDataTable;
+    DataTable: TDataTable;
   begin
-    DataTable := TDelphiSpecDataTable.Create(StrToArray(FReader.ReadLine));
+    DataTable := TDataTable.Create(StrToArray(FReader.ReadLine));
 
     while TableInNextLine do
       DataTable.AddRow(StrToArray(FReader.ReadLine));
@@ -221,6 +239,7 @@ procedure TDelphiSpecParser.FeatureNode(Feature: TFeature);
 var
   Command: string;
   Scenario: TScenario;
+  ScenarioOutline: TScenarioOutline;
 begin
   while not FReader.Eof do
   begin
@@ -230,6 +249,12 @@ begin
     Command := Trim(FReader.ReadLine);
     if FLanguages.StartsWith(Command, sBackground) then
       BackgroundNode(Feature)
+    else if FLanguages.StartsWith(Command, sScenarioOutline) then
+    begin
+      ScenarioOutline := TScenarioOutline.Create(Feature, FLanguages.StepSubstring(Command, sScenarioOutline));
+      Feature.ScenarioOutlines.Add(ScenarioOutline);
+      ScenarioOutlineNode(ScenarioOutline);
+    end
     else if FLanguages.StartsWith(Command, sScenario) then
     begin
       Scenario := TScenario.Create(Feature, FLanguages.StepSubstring(Command, sScenario));
@@ -279,6 +304,18 @@ begin
   GivenNode(Scenario);
   WhenNode(Scenario);
   ThenNode(Scenario);
+end;
+
+procedure TDelphiSpecParser.ScenarioOutlineNode(
+  ScenarioOutline: TScenarioOutline);
+begin
+  PassEmptyLines;
+  CheckEof;
+
+  GivenNode(ScenarioOutline);
+  WhenNode(ScenarioOutline);
+  ThenNode(ScenarioOutline);
+  ExampleNode(ScenarioOutline);
 end;
 
 procedure TDelphiSpecParser.ThenNode(Scenario: TScenario);

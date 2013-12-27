@@ -3,7 +3,9 @@ unit DelphiSpec.Core;
 interface
 
 uses
-  DelphiSpec.StepDefinitions;
+  Generics.Collections, DelphiSpec.StepDefinitions, DelphiSpec.Scenario;
+
+function ReadFeatures(const Path: string; Recursive: Boolean; const LangCode: string): TObjectList<TFeature>;
 
 function GetStepDefinitionsClass(const Name: string): TStepDefinitionsClass;
 procedure RegisterStepDefinitionsClass(StepDefinitionsClass: TStepDefinitionsClass);
@@ -11,7 +13,10 @@ procedure RegisterStepDefinitionsClass(StepDefinitionsClass: TStepDefinitionsCla
 implementation
 
 uses
-  SysUtils, Rtti, Generics.Collections, DelphiSpec.Attributes;
+  SysUtils, IOUtils, Rtti, DelphiSpec.Attributes, DelphiSpec.Parser;
+
+const
+  FileMask = '*.feature';
 
 var
   __StepDefsClassList: TDictionary<string, TStepDefinitionsClass>;
@@ -39,6 +44,31 @@ end;
 function GetStepDefinitionsClass(const Name: string): TStepDefinitionsClass;
 begin
   Result := __StepDefsClassList[AnsiLowerCase(Name)];
+end;
+
+function ReadFeatures(const Path: string; Recursive: Boolean; const LangCode: string): TObjectList<TFeature>;
+var
+  FileName: string;
+  Parser: TDelphiSpecParser;
+  SearchMode: TSearchOption;
+begin
+  if Recursive then
+    SearchMode := TSearchOption.soAllDirectories
+  else
+    SearchMode := TSearchOption.soTopDirectoryOnly;
+
+  Result := TObjectList<TFeature>.Create(True);
+  try
+    Parser := TDelphiSpecParser.Create(LangCode);
+    try
+      for FileName in TDirectory.GetFiles(Path, FileMask, SearchMode) do
+        Parser.Execute(FileName, Result);
+    finally
+      Parser.Free;
+    end;
+  except
+    FreeAndNil(Result);
+  end;
 end;
 
 initialization

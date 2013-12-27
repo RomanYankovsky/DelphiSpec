@@ -2,24 +2,20 @@ unit DelphiSpec.DUnit;
 
 interface
 
-procedure PrepareDelphiSpecs(const Path: string; Recursive: Boolean; const LangCode: string);
+uses
+  Generics.Collections, DelphiSpec.Scenario;
+
+procedure CreateDUnitTests(Features: TObjectList<TFeature>);
 
 implementation
 
 uses
-  IOUtils, Generics.Collections, TestFramework, DelphiSpec.Scenario,
-  DelphiSpec.Parser, DelphiSpec.StepDefinitions;
-
-const
-  FileMask = '*.feature';
+  TestFramework, DelphiSpec.StepDefinitions;
 
 type
   TDelphiSpecTestSuite = class(TTestSuite)
-  private
-    FFeature: TFeature;
   public
-    constructor Create(Feature: TFeature); overload; virtual;
-    destructor Destroy; override;
+    constructor Create(const Name: string; Scenarios: TObjectList<TScenario>); overload; virtual;
   end;
 
   TDelphiSpecTestCase = class(TAbstractTest)
@@ -28,40 +24,22 @@ type
     procedure RunTest(testResult: TTestResult); override;
   public
     constructor Create(Scenario: TScenario); overload; virtual;
-    destructor Destroy; override;
   end;
 
-procedure PrepareDelphiSpecs(const Path: string; Recursive: Boolean; const LangCode: string);
+procedure CreateDUnitTests(Features: TObjectList<TFeature>);
 var
-  FileName: string;
-  Parser: TDelphiSpecParser;
-  SearchMode: TSearchOption;
-
   Feature: TFeature;
-  Features: TObjectList<TFeature>;
+  Suite: TDelphiSpecTestSuite;
+  ScenarioOutline: TScenarioOutline;
 begin
-  if Recursive then
-    SearchMode := TSearchOption.soAllDirectories
-  else
-    SearchMode := TSearchOption.soTopDirectoryOnly;
+  for Feature in Features do
+  begin
+    Suite := TDelphiSpecTestSuite.Create(Feature.Name, Feature.Scenarios);
 
-  Features := nil;
-  Parser := nil;
-  try
-    Features := TObjectList<TFeature>.Create(False);
-    Parser := TDelphiSpecParser.Create(LangCode);
+    for ScenarioOutline in Feature.ScenarioOutlines do
+      Suite.AddSuite(TDelphiSpecTestSuite.Create(ScenarioOutline.Name, ScenarioOutline.Scenarios));
 
-    for FileName in TDirectory.GetFiles(Path, FileMask, SearchMode) do
-    begin
-      Features.Clear;
-      Parser.Execute(FileName, Features);
-
-      for Feature in Features do
-         RegisterTest(TDelphiSpecTestSuite.Create(Feature));
-    end;
-  finally
-    Features.Free;
-    Parser.Free;
+    RegisterTest(Suite);
   end;
 end;
 
@@ -71,12 +49,6 @@ constructor TDelphiSpecTestCase.Create(Scenario: TScenario);
 begin
   inherited Create(Scenario.Name);
   FScenario := Scenario;
-end;
-
-destructor TDelphiSpecTestCase.Destroy;
-begin
-  FScenario.Free;
-  inherited;
 end;
 
 procedure TDelphiSpecTestCase.RunTest(testResult: TTestResult);
@@ -90,7 +62,12 @@ begin
     if Assigned(FScenario.Feature.Background) then
       FScenario.Feature.Background.Execute(StepDefs);
 
-    FScenario.Execute(StepDefs);
+    try
+      FScenario.Execute(StepDefs);
+    except
+      on E: EScenarioStepException do
+        raise ETestFailure.CreateFmt(E.Message, []);
+    end;
 
     StepDefs.TearDown;
   finally
@@ -100,21 +77,14 @@ end;
 
 { TDelphiSpecTestSuite }
 
-constructor TDelphiSpecTestSuite.Create(Feature: TFeature);
+constructor TDelphiSpecTestSuite.Create(const Name: string; Scenarios: TObjectList<TScenario>);
 var
   Scenario: TScenario;
 begin
-  inherited Create(Feature.Name);
-  FFeature := Feature;
+  inherited Create(Name);
 
-  for Scenario in Feature.Scenarios do
+  for Scenario in Scenarios do
     self.AddTest(TDelphiSpecTestCase.Create(Scenario));
-end;
-
-destructor TDelphiSpecTestSuite.Destroy;
-begin
-  FFeature.Free;
-  inherited;
 end;
 
 end.

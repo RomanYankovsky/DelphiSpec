@@ -4,16 +4,19 @@
     <Feature>Feature:</Feature>
     <Background>Background:</Background>
     <Scenario>Scenario:</Scenario>
+    <ScenarioOutline>Scenario Outline:</ScenarioOutline>
     <Given>Given</Given>
     <When>When</When>
     <Then>Then</Then>
     <And>And</And>
     <And>But</And>
+    <Examples>Examples:</Examples>
   </EN>
   <RU>
     <Feature>Функция:</Feature>
     <Feature>Функционал:</Feature>
     <Scenario>Сценарий:</Scenario>
+    <ScenarioOutline>Структура сценария:</ScenarioOutline>
     <Background>Предыстория:</Background>
     <Background>Контекст:</Background>
     <Given>Допустим</Given>
@@ -26,5 +29,6 @@
     <And>К тому же</And>
     <And>Но</And>
     <And>А</And>
+    <Examples>Примеры:</Examples>
   </RU>
 </DelphiSpecLanguages>

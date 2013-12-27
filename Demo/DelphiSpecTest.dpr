@@ -9,10 +9,20 @@ uses
   SampleCalculator in 'SampleCalculator.pas',
   SampleCalculatorStepDefs in 'SampleCalculatorStepDefs.pas',
   SampleAccountsStepDefs in 'SampleAccountsStepDefs.pas',
+  Generics.Collections,
+  DelphiSpec.Core,
+  DelphiSpec.Scenario,
   DelphiSpec.DUnit;
 
+var
+  Features: TObjectList<TFeature>;
 begin
-  PrepareDelphiSpecs('features', True, 'EN');
-  DUnitTestRunner.RunRegisteredTests;
+  Features := ReadFeatures('features', True, 'EN');
+  try
+    CreateDUnitTests(Features);
+    DUnitTestRunner.RunRegisteredTests;
+  finally
+    Features.Free;
+  end;
 end.
 
