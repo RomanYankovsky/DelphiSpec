@@ -238,9 +238,11 @@ end;
 procedure TDelphiSpecParser.FeatureNode(Feature: TFeature);
 var
   Command: string;
+  CommentsAllowed: Boolean;
   Scenario: TScenario;
   ScenarioOutline: TScenarioOutline;
 begin
+  CommentsAllowed := True;
   while not FReader.Eof do
   begin
     PassEmptyLines;
@@ -248,20 +250,26 @@ begin
 
     Command := Trim(FReader.ReadLine);
     if FLanguages.StartsWith(Command, sBackground) then
-      BackgroundNode(Feature)
+    begin
+      BackgroundNode(Feature);
+      CommentsAllowed := False;
+    end
     else if FLanguages.StartsWith(Command, sScenarioOutline) then
     begin
       ScenarioOutline := TScenarioOutline.Create(Feature, FLanguages.StepSubstring(Command, sScenarioOutline));
       Feature.ScenarioOutlines.Add(ScenarioOutline);
       ScenarioOutlineNode(ScenarioOutline);
+      CommentsAllowed := False;
     end
     else if FLanguages.StartsWith(Command, sScenario) then
     begin
       Scenario := TScenario.Create(Feature, FLanguages.StepSubstring(Command, sScenario));
       Feature.Scenarios.Add(Scenario);
       ScenarioNode(Scenario);
-    end else
-      Break;
+      CommentsAllowed := False;
+    end
+    else if not CommentsAllowed then
+      raise EDelphiSpecSyntaxError.Create('Syntax Error');
   end;
 end;
 

@@ -1,4 +1,7 @@
 Feature: Calculator
+  In order to avoid silly mistakes
+  As a math idiot
+  I want to be told the sum and the multiplication of two numbers
 
 Scenario: Add two numbers (fails)
   Given I have entered 50 in calculator
