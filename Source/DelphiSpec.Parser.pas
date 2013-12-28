@@ -56,6 +56,7 @@ type
     procedure RaiseSyntaxError;
 
     function TryReadDataTable: IDataTable;
+    function TryReadPyString: string;
 
     procedure FeatureNode(Feature: TFeature);
     procedure BackgroundNode(Feature: TFeature);
@@ -240,10 +241,52 @@ const
   end;
 
 begin
+  PassEmptyLines;
+
   if TableInNextLine then
     Result := ReadDataTable
   else
     Result := nil;
+end;
+
+function TDelphiSpecParser.TryReadPyString: string;
+const
+  PyStrMarker = '"""';
+var
+  Lines: TStringList;
+  Line, IndentationText: string;
+  TextStartPos: Integer;
+begin
+  Result := '';
+
+  PassEmptyLines;
+  if FReader.Eof or (Trim(FReader.PeekLine) <> PyStrMarker) then
+    Exit;
+
+  Lines := TStringList.Create;
+  try
+    Line := FReader.ReadLine;
+
+    TextStartPos := Pos(PyStrMarker, Line);
+    IndentationText := Copy(Line, 1, TextStartPos - 1);
+
+    repeat
+      CheckEof;
+
+      Line := FReader.ReadLine;
+      if not StartsText(IndentationText, Line) then
+        RaiseSyntaxError;
+
+      Lines.Add(Copy(Line, TextStartPos, Length(Line) - TextStartPos + 1));
+    until Trim(FReader.PeekLine) = PyStrMarker;
+
+    if not StartsText(IndentationText, FReader.ReadLine) then
+      RaiseSyntaxError;
+
+    Result := Lines.Text;
+  finally
+    Lines.Free;
+  end;
 end;
 
 procedure TDelphiSpecParser.FeatureNode(Feature: TFeature);
@@ -291,9 +334,9 @@ begin
   Command := Trim(FReader.ReadLine);
 
   if FLanguages.StartsWith(Command, sGiven) then
-    Scenario.AddGiven(FLanguages.StepSubstring(Command, sGiven), TryReadDataTable)
+    Scenario.AddGiven(FLanguages.StepSubstring(Command, sGiven), TryReadDataTable, TryReadPyString)
   else if FLanguages.StartsWith(Command, sAnd) then
-    Scenario.AddGiven(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable)
+    Scenario.AddGiven(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable, TryReadPyString)
   else
     RaiseSyntaxError;
 
@@ -349,9 +392,9 @@ begin
   Command := Trim(FReader.ReadLine);
 
   if FLanguages.StartsWith(Command, sThen) then
-    Scenario.AddThen(FLanguages.StepSubstring(Command, sThen), TryReadDataTable)
+    Scenario.AddThen(FLanguages.StepSubstring(Command, sThen), TryReadDataTable, TryReadPyString)
   else if FLanguages.StartsWith(Command, sAnd) then
-    Scenario.AddThen(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable)
+    Scenario.AddThen(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable, TryReadPyString)
   else
     RaiseSyntaxError;
 
@@ -372,9 +415,9 @@ begin
   Command := Trim(FReader.ReadLine);
 
   if FLanguages.StartsWith(Command, sWhen) then
-    Scenario.AddWhen(FLanguages.StepSubstring(Command, sWhen), TryReadDataTable)
+    Scenario.AddWhen(FLanguages.StepSubstring(Command, sWhen), TryReadDataTable, TryReadPyString)
   else if FLanguages.StartsWith(Command, sAnd) then
-    Scenario.AddWhen(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable)
+    Scenario.AddWhen(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable, TryReadPyString)
   else
     RaiseSyntaxError;
 

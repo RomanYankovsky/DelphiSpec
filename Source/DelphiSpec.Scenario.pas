@@ -35,11 +35,13 @@ type
     strict private
       FValue: string;
       FDataTable: IDataTable;
+      FPyString: string;
     public
-      constructor Create(const Value: string; DataTable: IDataTable); reintroduce;
+      constructor Create(const Value: string; DataTable: IDataTable; const PyString: string); reintroduce;
 
       property Value: string read FValue;
       property DataTable: IDataTable read FDataTable;
+      property PyString: string read FPyString;
     end;
   strict private
     FName: string;
@@ -61,9 +63,9 @@ type
     constructor Create(Parent: TFeature; const Name: string); reintroduce; virtual;
     destructor Destroy; override;
 
-    procedure AddGiven(const Value: string; DataTable: IDataTable);
-    procedure AddWhen(const Value: string; DataTable: IDataTable);
-    procedure AddThen(const Value: string; DataTable: IDataTable);
+    procedure AddGiven(const Value: string; DataTable: IDataTable; const PyString: string);
+    procedure AddWhen(const Value: string; DataTable: IDataTable; const PyString: string);
+    procedure AddThen(const Value: string; DataTable: IDataTable; const PyString: string);
 
     procedure Execute(StepDefs: TStepDefinitions);
 
@@ -115,28 +117,38 @@ end;
 { TScenario.TScenarioStep }
 
 constructor TScenario.TStep.Create(const Value: string;
-  DataTable: IDataTable);
+  DataTable: IDataTable; const PyString: string);
 begin
   inherited Create;
   FValue := Value;
   FDataTable := DataTable;
+  FPyString := PyString;
 end;
 
 { TScenario }
 
-procedure TScenario.AddGiven(const Value: string; DataTable: IDataTable);
+procedure TScenario.AddGiven(const Value: string; DataTable: IDataTable; const PyString: string);
 begin
-  FGiven.Add(TStep.Create(Value, DataTable));
+  if Assigned(DataTable) and (PyString <> '') then
+    raise EScenarioStepException.Create('Cannot assign both DataTable and PyString to scenario step');
+
+  FGiven.Add(TStep.Create(Value, DataTable, PyString));
 end;
 
-procedure TScenario.AddThen(const Value: string; DataTable: IDataTable);
+procedure TScenario.AddThen(const Value: string; DataTable: IDataTable; const PyString: string);
 begin
-  FThen.Add(TStep.Create(Value, DataTable));
+  if Assigned(DataTable) and (PyString <> '') then
+    raise EScenarioStepException.Create('Cannot assign both DataTable and PyString to scenario step');
+
+  FThen.Add(TStep.Create(Value, DataTable, PyString));
 end;
 
-procedure TScenario.AddWhen(const Value: string; DataTable: IDataTable);
+procedure TScenario.AddWhen(const Value: string; DataTable: IDataTable; const PyString: string);
 begin
-  FWhen.Add(TStep.Create(Value, DataTable));
+  if Assigned(DataTable) and (PyString <> '') then
+    raise EScenarioStepException.Create('Cannot assign both DataTable and PyString to scenario step');
+
+  FWhen.Add(TStep.Create(Value, DataTable, PyString));
 end;
 
 function TScenario.ConvertParamValue(const Value: string;
@@ -276,6 +288,11 @@ begin
     SetLength(Values, Length(Values) + 1);
     Values[High(Values)] := ConvertDataTable(Step.DataTable, Params[High(Params)].ParamType);
   end;
+  if Step.PyString <> '' then
+  begin
+    SetLength(Values, Length(Values) + 1);
+    Values[High(Values)] := Step.PyString;
+  end;
 
   if Length(Params) <> Length(Values) then
     raise EScenarioStepException.CreateFmt('Parameter count does not match: "%s" (%s)', [Step.Value, AttributeClass.ClassName]);
@@ -358,13 +375,13 @@ begin
     Scenario := TScenario.Create(Feature, Name + Format(' [case %d]', [I + 1]));
 
     for Step in FGiven do
-      Scenario.AddGiven(PutValues(Step.Value, I), Step.DataTable);
+      Scenario.AddGiven(PutValues(Step.Value, I), Step.DataTable, PutValues(Step.PyString, I));
 
     for Step in FWhen do
-      Scenario.AddWhen(PutValues(Step.Value, I), Step.DataTable);
+      Scenario.AddWhen(PutValues(Step.Value, I), Step.DataTable, PutValues(Step.PyString, I));
 
     for Step in FThen do
-      Scenario.AddThen(PutValues(Step.Value, I), Step.DataTable);
+      Scenario.AddThen(PutValues(Step.Value, I), Step.DataTable, PutValues(Step.PyString, I));
 
     FScenarios.Add(Scenario);
   end;

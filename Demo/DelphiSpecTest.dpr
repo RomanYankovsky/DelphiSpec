@@ -9,6 +9,7 @@ uses
   SampleCalculator in 'SampleCalculator.pas',
   SampleCalculatorStepDefs in 'SampleCalculatorStepDefs.pas',
   SampleAccountsStepDefs in 'SampleAccountsStepDefs.pas',
+  SampleSpamFilterStepDefs in 'SampleSpamFilterStepDefs.pas',
   Generics.Collections,
   DelphiSpec.Core,
   DelphiSpec.Scenario,
