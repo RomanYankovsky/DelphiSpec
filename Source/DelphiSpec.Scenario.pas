@@ -332,7 +332,7 @@ begin
   inherited;
   FScenariosReady := False;
   FExamples := nil;
-  FScenarios := TObjectList<TScenario>.Create(False);
+  FScenarios := TObjectList<TScenario>.Create(True);
 end;
 
 destructor TScenarioOutline.Destroy;

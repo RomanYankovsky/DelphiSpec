@@ -58,18 +58,19 @@ begin
   StepDefs := FScenario.Feature.StepDefinitionsClass.Create;
   try
     StepDefs.SetUp;
-
-    if Assigned(FScenario.Feature.Background) then
-      FScenario.Feature.Background.Execute(StepDefs);
-
     try
-      FScenario.Execute(StepDefs);
-    except
-      on E: EScenarioStepException do
-        raise ETestFailure.CreateFmt(E.Message, []);
-    end;
+      if Assigned(FScenario.Feature.Background) then
+        FScenario.Feature.Background.Execute(StepDefs);
 
-    StepDefs.TearDown;
+      try
+        FScenario.Execute(StepDefs);
+      except
+        on E: EScenarioStepException do
+          raise ETestFailure.CreateFmt(E.Message, []);
+     end;
+    finally
+      StepDefs.TearDown;
+    end;
   finally
     StepDefs.Free;
   end;
