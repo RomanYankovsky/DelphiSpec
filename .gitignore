@@ -35,7 +35,6 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
-dunit.ini
 
 # Delphi files #
 ################
@@ -44,3 +43,9 @@ dunit.ini
 *.identcache
 __history
 Win32
+DelphiSpecDemo.res
+DelphiSpecTests.res
+
+# DUnit files #
+###############
+dunit.ini
