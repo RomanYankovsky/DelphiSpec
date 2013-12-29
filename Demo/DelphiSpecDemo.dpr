@@ -1,4 +1,4 @@
-program DelphiSpecTest;
+program DelphiSpecDemo;
 
 {$IFDEF CONSOLE_TESTRUNNER}
 {$APPTYPE CONSOLE}
@@ -18,6 +18,8 @@ uses
 var
   Features: TObjectList<TFeature>;
 begin
+  ReportMemoryLeaksOnShutdown := True;
+
   Features := ReadFeatures('features', True, 'EN');
   try
     CreateDUnitTests(Features);
