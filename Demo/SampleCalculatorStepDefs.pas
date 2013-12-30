@@ -36,7 +36,7 @@ type
 implementation
 
 uses
-  SysUtils, TestFramework, DelphiSpec.Core;
+  SysUtils, DelphiSpec.Core, DelphiSpec.Assert;
 
 { TSampleCalculatorSteps }
 
@@ -67,8 +67,7 @@ end;
 
 procedure TSampleCalculatorSteps.Then_the_result_should_be_value_on_the_screen(Value: Integer);
 begin
-  if FCalc.Value <> Value then
-    raise ETestFailure.Create('Incorrect result on calculator screen');
+  Assert.AreEqual(Value, FCalc.Value, 'Incorrect result on calculator screen');
 end;
 
 initialization

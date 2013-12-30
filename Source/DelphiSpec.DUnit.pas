@@ -10,7 +10,7 @@ procedure CreateDUnitTests(Features: TObjectList<TFeature>);
 implementation
 
 uses
-  TestFramework, DelphiSpec.StepDefinitions;
+  TestFramework, DelphiSpec.StepDefinitions, DelphiSpec.Assert;
 
 type
   TDelphiSpecTestSuite = class(TTestSuite)
@@ -66,8 +66,10 @@ begin
         FScenario.Execute(StepDefs);
       except
         on E: EScenarioStepException do
-          raise ETestFailure.CreateFmt(E.Message, []);
-     end;
+          raise ETestFailure.Create(E.Message);
+        on E: EDelphiSpecTestFailure do
+          raise ETestFailure.Create(E.Message);
+      end;
     finally
       StepDefs.TearDown;
     end;

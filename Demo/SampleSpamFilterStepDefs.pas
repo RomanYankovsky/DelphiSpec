@@ -24,7 +24,7 @@ type
 implementation
 
 uses
-  TestFramework, StrUtils, DelphiSpec.Core;
+  StrUtils, DelphiSpec.Core, DelphiSpec.Assert;
 
 { TFilterSteps }
 
@@ -46,8 +46,7 @@ end;
 
 procedure TSpamFilterSteps.Then_my_inbox_is_empty;
 begin
-  if FMailCount <> 0 then
-    raise ETestFailure.Create('Inbox is not empty');
+  Assert.AreEqual(0, FMailCount, 'Inbox should be empty');
 end;
 
 initialization

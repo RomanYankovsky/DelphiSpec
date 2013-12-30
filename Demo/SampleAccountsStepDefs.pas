@@ -42,7 +42,7 @@ type
 implementation
 
 uses
-  DelphiSpec.Core, TestFramework;
+  DelphiSpec.Core, DelphiSpec.Assert;
 
 { TSampleAccountSteps }
 
@@ -89,14 +89,12 @@ end;
 
 procedure TSampleAccountSteps.Then_Access_Denied;
 begin
-  if FAccessGranted then
-    raise ETestFailure.Create('Access granted!');
+  Assert.IsFalse(FAccessGranted, 'Access granted');
 end;
 
 procedure TSampleAccountSteps.Then_I_have_access_to_private_messages;
 begin
-  if not FAccessGranted then
-    raise ETestFailure.Create('Access denied');
+  Assert.IsTrue(FAccessGranted, 'Access denied');
 end;
 
 procedure TSampleAccountSteps.When_I_login;
