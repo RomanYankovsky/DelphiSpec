@@ -70,6 +70,11 @@ type
 
     [Then_('Table is')]
     procedure TestTable(Value: TArray<TTableRow>);
+
+    procedure Given_I_have_N_apples(const N: Integer);
+
+    [Then_('I have $M apples')]
+    procedure TestNamedParameter(const M: Integer);
   end;
 
 type
@@ -95,6 +100,9 @@ type
     procedure Test_StringParameter;
     procedure Test_PyStringParameter;
     procedure Test_DataTableParameter;
+
+    procedure Test_NamedParameterInMethodName;
+    procedure Test_NamedParameterWithDollarSign;
   end;
 
 const
@@ -103,6 +111,7 @@ const
   StringParamStepText = 'the string is test string';
   PyStrParamStepText = 'PyString is:';
   TableParamStepText = 'Table is:';
+  NamedParamStepText = 'I have 3 apples';
 
 implementation
 
@@ -151,6 +160,16 @@ begin
   Table.AddRow(['2', 'b']);
 
   AddStepAndCheckExecute(TTestParamSteps, Then_Attribute, TableParamStepText, '', Table);
+end;
+
+procedure Test_TScenario.Test_NamedParameterInMethodName;
+begin
+  AddStepAndCheckExecute(TTestParamSteps, Given_Attribute, NamedParamStepText);
+end;
+
+procedure Test_TScenario.Test_NamedParameterWithDollarSign;
+begin
+  AddStepAndCheckExecute(TTestParamSteps, Then_Attribute, NamedParamStepText);
 end;
 
 procedure Test_TScenario.Test_PyStringParameter;
@@ -265,9 +284,21 @@ end;
 
 { TTestParamSteps }
 
+procedure TTestParamSteps.Given_I_have_N_apples(const N: Integer);
+begin
+  if N = 3 then
+    SetTestPassed;
+end;
+
 procedure TTestParamSteps.TestArray(Value: TArray<Integer>);
 begin
   if (Length(Value) = 3) and (Value[0] = 4) and (Value[1] = 5) and (Value[2] = 6) then
+    SetTestPassed;
+end;
+
+procedure TTestParamSteps.TestNamedParameter(const M: Integer);
+begin
+  if M = 3 then
     SetTestPassed;
 end;
 
