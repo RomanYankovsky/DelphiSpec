@@ -12,6 +12,18 @@
     <And>But</And>
     <Examples>Examples:</Examples>
   </EN>
+  <PT_BR>
+    <Feature>Aspecto:</Feature>
+    <Background>Conhecimento:</Background>
+    <Scenario>Cenário:</Scenario>
+    <ScenarioOutline>Esboço do Cenário:</ScenarioOutline>
+    <Given>Dado</Given>
+    <When>Quando</When>
+    <Then>Então</Then>
+    <And>e</And>
+    <And>Mas</And>
+    <Examples>Exemplos:</Examples>
+  </PT_BR>  
   <RU>
     <Feature>Функция:</Feature>
     <Feature>Функционал:</Feature>
