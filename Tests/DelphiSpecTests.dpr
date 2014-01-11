@@ -16,7 +16,8 @@ program DelphiSpecTests;
 
 uses
   DUnitTestRunner,
-  DelphiSpec.Test.Scenario in 'DelphiSpec.Test.Scenario.pas';
+  DelphiSpec.Test.Scenario in 'DelphiSpec.Test.Scenario.pas',
+  DelphiSpec.Test.Languages in 'DelphiSpec.Test.Languages.pas';
 
 {$R *.RES}
 
