@@ -6,7 +6,7 @@ uses
   SysUtils;
 
 type
-  EDelphiSpecTestFailure = class(Exception);
+  EDelphiSpecTestFailure = class(EAbort);
 
   Assert = class
   private
