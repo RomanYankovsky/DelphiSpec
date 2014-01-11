@@ -7,15 +7,18 @@ uses
   DelphiSpec.Scenario, DelphiSpec.StepDefinitions;
 
 type
+  TStepKind = (skFeature, skBackground, skScenario, skScenarioOutline,
+    skGiven, skAnd, skWhen, skThen, skExamples);
+
   TDelphiSpecLanguages = class
   private
-    FLangNode: IXMLNode;
-    FXML: IXMLDocument;
+    class var FLangXML: IXMLDocument;
+    class function GetStepKindAsString(StepKind: TStepKind): string; static;
   public
-    constructor Create(const LangCode: string); reintroduce;
+    class constructor Create;
 
-    function StartsWith(const S: string; const StepKind: string): Boolean;
-    function StepSubstring(const S: string; const StepKind: string): string;
+    class function CheckStepKind(StepKind: TStepKind; const S: string; const LangCode: string): Boolean;
+    class function GetStepText(StepKind: TStepKind; const S: string; const LangCode: string): string;
   end;
 
   TDelphiSpecFileReader = class
@@ -48,8 +51,8 @@ type
 
   TDelphiSpecParser = class
   private
+    FLangCode: string;
     FReader: TDelphiSpecFileReader;
-    FLanguages: TDelphiSpecLanguages;
 
     procedure CheckEof;
     procedure PassEmptyLines;
@@ -79,17 +82,6 @@ implementation
 
 uses
   StrUtils, Types, XmlDoc, DelphiSpec.Core;
-
-const
-  sFeature = 'Feature';
-  sBackground = 'Background';
-  sScenario = 'Scenario';
-  sScenarioOutline = 'ScenarioOutline';
-  sGiven = 'Given';
-  sAnd = 'And';
-  sWhen = 'When';
-  sThen = 'Then';
-  sExamples = 'Examples';
 
 { TDelphiSpecFileReader }
 
@@ -157,13 +149,12 @@ end;
 constructor TDelphiSpecParser.Create(const LangCode: string);
 begin
   inherited Create;
-  FLanguages := TDelphiSpecLanguages.Create(LangCode);
+  FLangCode := LangCode;
   FReader := TDelphiSpecFileReader.Create;
 end;
 
 destructor TDelphiSpecParser.Destroy;
 begin
-  FLanguages.Free;
   FReader.Free;
   inherited;
 end;
@@ -176,7 +167,7 @@ begin
   CheckEof;
 
   Command := Trim(FReader.ReadLine);
-  if not FLanguages.StartsWith(Command, sExamples) then
+  if not TDelphiSpecLanguages.CheckStepKind(skExamples, Command, FLangCode) then
     RaiseSyntaxError;
 
   ScenarioOutline.SetExamples(TryReadDataTable);
@@ -196,10 +187,10 @@ begin
     CheckEof;
 
     Command := Trim(FReader.ReadLine);
-    if not FLanguages.StartsWith(Command, sFeature) then
+    if not TDelphiSpecLanguages.CheckStepKind(skFeature, Command, FLangCode) then
       RaiseSyntaxError;
 
-    FeatureName := FLanguages.StepSubstring(Command, sFeature);
+    FeatureName := TDelphiSpecLanguages.GetStepText(skFeature, Command, FLangCode);
     Feature := TFeature.Create(FeatureName, GetStepDefinitionsClass(FeatureName));
     Features.Add(Feature);
 
@@ -303,21 +294,21 @@ begin
     CheckEof;
 
     Command := Trim(FReader.ReadLine);
-    if FLanguages.StartsWith(Command, sBackground) then
+    if TDelphiSpecLanguages.CheckStepKind(skBackground, Command, FLangCode) then
     begin
       BackgroundNode(Feature);
       CommentsAllowed := False;
     end
-    else if FLanguages.StartsWith(Command, sScenarioOutline) then
+    else if TDelphiSpecLanguages.CheckStepKind(skScenarioOutline, Command, FLangCode) then
     begin
-      ScenarioOutline := TScenarioOutline.Create(Feature, FLanguages.StepSubstring(Command, sScenarioOutline));
+      ScenarioOutline := TScenarioOutline.Create(Feature, TDelphiSpecLanguages.GetStepText(skScenarioOutline, Command, FLangCode));
       Feature.ScenarioOutlines.Add(ScenarioOutline);
       ScenarioOutlineNode(ScenarioOutline);
       CommentsAllowed := False;
     end
-    else if FLanguages.StartsWith(Command, sScenario) then
+    else if TDelphiSpecLanguages.CheckStepKind(skScenario, Command, FLangCode) then
     begin
-      Scenario := TScenario.Create(Feature, FLanguages.StepSubstring(Command, sScenario));
+      Scenario := TScenario.Create(Feature, TDelphiSpecLanguages.GetStepText(skScenario, Command, FLangCode));
       Feature.Scenarios.Add(Scenario);
       ScenarioNode(Scenario);
       CommentsAllowed := False;
@@ -333,10 +324,10 @@ var
 begin
   Command := Trim(FReader.ReadLine);
 
-  if FLanguages.StartsWith(Command, sGiven) then
-    Scenario.AddGiven(FLanguages.StepSubstring(Command, sGiven), TryReadDataTable, TryReadPyString)
-  else if FLanguages.StartsWith(Command, sAnd) then
-    Scenario.AddGiven(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable, TryReadPyString)
+  if TDelphiSpecLanguages.CheckStepKind(skGiven, Command, FLangCode) then
+    Scenario.AddGiven(TDelphiSpecLanguages.GetStepText(skGiven, Command, FLangCode), TryReadDataTable, TryReadPyString)
+  else if TDelphiSpecLanguages.CheckStepKind(skAnd, Command, FLangCode) then
+    Scenario.AddGiven(TDelphiSpecLanguages.GetStepText(skAnd, Command, FLangCode), TryReadDataTable, TryReadPyString)
   else
     RaiseSyntaxError;
 
@@ -345,7 +336,7 @@ begin
 
   Command := Trim(FReader.PeekLine);
 
-  if FLanguages.StartsWith(Command, sAnd) then
+  if TDelphiSpecLanguages.CheckStepKind(skAnd, Command, FLangCode) then
     GivenNode(Scenario);
 end;
 
@@ -391,10 +382,10 @@ var
 begin
   Command := Trim(FReader.ReadLine);
 
-  if FLanguages.StartsWith(Command, sThen) then
-    Scenario.AddThen(FLanguages.StepSubstring(Command, sThen), TryReadDataTable, TryReadPyString)
-  else if FLanguages.StartsWith(Command, sAnd) then
-    Scenario.AddThen(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable, TryReadPyString)
+  if TDelphiSpecLanguages.CheckStepKind(skThen, Command, FLangCode) then
+    Scenario.AddThen(TDelphiSpecLanguages.GetStepText(skThen, Command, FLangCode), TryReadDataTable, TryReadPyString)
+  else if TDelphiSpecLanguages.CheckStepKind(skAnd, Command, FLangCode) then
+    Scenario.AddThen(TDelphiSpecLanguages.GetStepText(skAnd, Command, FLangCode), TryReadDataTable, TryReadPyString)
   else
     RaiseSyntaxError;
 
@@ -404,7 +395,7 @@ begin
 
   Command := Trim(FReader.PeekLine);
 
-  if FLanguages.StartsWith(Command, sAnd) then
+  if TDelphiSpecLanguages.CheckStepKind(skAnd, Command, FLangCode) then
     ThenNode(Scenario);
 end;
 
@@ -414,10 +405,10 @@ var
 begin
   Command := Trim(FReader.ReadLine);
 
-  if FLanguages.StartsWith(Command, sWhen) then
-    Scenario.AddWhen(FLanguages.StepSubstring(Command, sWhen), TryReadDataTable, TryReadPyString)
-  else if FLanguages.StartsWith(Command, sAnd) then
-    Scenario.AddWhen(FLanguages.StepSubstring(Command, sAnd), TryReadDataTable, TryReadPyString)
+  if TDelphiSpecLanguages.CheckStepKind(skWhen, Command, FLangCode) then
+    Scenario.AddWhen(TDelphiSpecLanguages.GetStepText(skWhen, Command, FLangCode), TryReadDataTable, TryReadPyString)
+  else if TDelphiSpecLanguages.CheckStepKind(skAnd, Command, FLangCode) then
+    Scenario.AddWhen(TDelphiSpecLanguages.GetStepText(skAnd, Command, FLangCode), TryReadDataTable, TryReadPyString)
   else
     RaiseSyntaxError;
 
@@ -425,52 +416,66 @@ begin
   CheckEof;
   Command := Trim(FReader.PeekLine);
 
-  if FLanguages.StartsWith(Command, sAnd) then
+  if TDelphiSpecLanguages.CheckStepKind(skAnd, Command, FLangCode) then
     WhenNode(Scenario);
 end;
 
 { TDelphiSpecLanguages }
 
-constructor TDelphiSpecLanguages.Create(const LangCode: string);
+class constructor TDelphiSpecLanguages.Create;
 var
   Stream: TResourceStream;
 begin
   Stream := TResourceStream.Create(hInstance, 'DelphiSpecLanguages', RT_RCDATA);
   try
-    FXML := NewXmlDocument;
-    FXML.LoadFromStream(Stream);
-
-    FLangNode := FXML.DocumentElement.ChildNodes.FindNode(LangCode);
+    FLangXML := NewXmlDocument;
+    FLangXML.LoadFromStream(Stream);
   finally
     Stream.Free;
   end;
 end;
 
-function TDelphiSpecLanguages.StartsWith(const S, StepKind: string): Boolean;
+class function TDelphiSpecLanguages.GetStepKindAsString(StepKind: TStepKind): string;
+const
+  StepNames: array [TStepKind] of string = (
+    'Feature', 'Background', 'Scenario', 'ScenarioOutline',
+    'Given', 'And', 'When', 'Then', 'Examples');
+begin
+  Result := StepNames[StepKind];
+end;
+
+class function TDelphiSpecLanguages.CheckStepKind(StepKind: TStepKind; const S: string; const LangCode: string): Boolean;
 var
   I: Integer;
+  LangNode: IXMLNode;
+  StepKindName: string;
 begin
   Result := False;
-  for I := 0 to FLangNode.ChildNodes.Count - 1 do
-    if (FLangNode.ChildNodes[I].NodeName = StepKind) and StartsText(FLangNode.ChildNodes[I].NodeValue, S) then
+  LangNode := FLangXML.DocumentElement.ChildNodes.FindNode(LangCode);
+  StepKindName := GetStepKindAsString(StepKind);
+
+  for I := 0 to LangNode.ChildNodes.Count - 1 do
+    if (LangNode.ChildNodes[I].NodeName = StepKindName) and StartsText(LangNode.ChildNodes[I].NodeValue, S) then
     begin
       Result := True;
       Break;
     end;
 end;
 
-function TDelphiSpecLanguages.StepSubstring(const S, StepKind: string): string;
+class function TDelphiSpecLanguages.GetStepText(StepKind: TStepKind; const S: string; const LangCode: string): string;
 var
   I: Integer;
-  StepName: string;
+  StepKindName: string;
+  LangNode: IXMLNode;
 begin
   Result := '';
-  for I := 0 to FLangNode.ChildNodes.Count - 1 do
-    if (FLangNode.ChildNodes[I].NodeName = StepKind) and StartsText(FLangNode.ChildNodes[I].NodeValue, S) then
-    begin
-      StepName := FLangNode.ChildNodes[I].NodeValue;
+  LangNode := FLangXML.DocumentElement.ChildNodes.FindNode(LangCode);
+  StepKindName := GetStepKindAsString(StepKind);
 
-      Result := Trim(Copy(S, Length(StepName) + 1));
+  for I := 0 to LangNode.ChildNodes.Count - 1 do
+    if (LangNode.ChildNodes[I].NodeName = StepKindName) and StartsText(LangNode.ChildNodes[I].NodeValue, S) then
+    begin
+      Result := Trim(Copy(S, Length(LangNode.ChildNodes[I].NodeValue) + 1));
       Break;
     end;
 end;
