@@ -43,8 +43,7 @@ Thumbs.db
 *.identcache
 __history
 Win32
-DelphiSpecDemo.res
-DelphiSpecTests.res
+*.res
 
 # DUnit files #
 ###############
