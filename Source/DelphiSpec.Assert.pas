@@ -11,6 +11,9 @@ type
   Assert = class
   private
     class function GetNotEqualsErrorMsg(Left, Right: string; Msg: string): string; static;
+{$IF CompilerVersion < 23}
+    class function ReturnAddress: Pointer; static;
+{$IFEND}
   public
     class procedure Fail(const Msg: string; ErrorAddress: Pointer = nil); static;
 
@@ -80,5 +83,12 @@ begin
   if not Value then
     Fail(GetNotEqualsErrorMsg('True', 'False', Msg), ReturnAddress);
 end;
+
+{$IF CompilerVersion < 23}
+class function Assert.ReturnAddress: Pointer;
+asm
+  mov eax,[ebp+4]
+end;
+{$IFEND}
 
 end.

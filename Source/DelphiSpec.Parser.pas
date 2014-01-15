@@ -83,7 +83,7 @@ implementation
 uses
   StrUtils, Types, XmlDoc,
 {$IFDEF MSWINDOWS}
-  Winapi.Windows, Winapi.ActiveX,
+  Windows, ActiveX,
 {$ENDIF}
 
   DelphiSpec.Core;
@@ -432,7 +432,7 @@ var
   Stream: TResourceStream;
 begin
 {$IFDEF MSWINDOWS}
-  Winapi.ActiveX.CoInitialize(nil);
+  ActiveX.CoInitialize(nil);
 {$ENDIF}
 
 

@@ -47,6 +47,8 @@ Win32
 *.dsk
 *.~*
 *.drc
+*.map
+*.rsm
 
 # DUnit files #
 ###############
