@@ -81,7 +81,12 @@ implementation
 {$R DelphiSpecI18n.res}
 
 uses
-  StrUtils, Types, XmlDoc, DelphiSpec.Core;
+  StrUtils, Types, XmlDoc,
+{$IFDEF MSWINDOWS}
+  Winapi.Windows, Winapi.ActiveX,
+{$ENDIF}
+
+  DelphiSpec.Core;
 
 { TDelphiSpecFileReader }
 
@@ -426,6 +431,11 @@ class constructor TDelphiSpecLanguages.Create;
 var
   Stream: TResourceStream;
 begin
+{$IFDEF MSWINDOWS}
+  Winapi.ActiveX.CoInitialize(nil);
+{$ENDIF}
+
+
   Stream := TResourceStream.Create(hInstance, 'DelphiSpecLanguages', RT_RCDATA);
   try
     FLangXML := NewXmlDocument;
@@ -487,5 +497,6 @@ begin
   inherited Create('Syntax error');
   FLineNo := LineNo;
 end;
+
 
 end.

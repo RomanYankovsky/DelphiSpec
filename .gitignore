@@ -44,7 +44,14 @@ Thumbs.db
 __history
 Win32
 *.res
+*.dsk
+*.~*
+*.drc
 
 # DUnit files #
 ###############
 dunit.ini
+
+# DUnitX files #
+###############
+dunitx-results.xml
