@@ -1,11 +1,11 @@
 program DelphiSpecDUnitXDemo;
 
 {$APPTYPE CONSOLE}
-{$R 'DelphiSpecI18n.res' '..\Source\DelphiSpecI18n.rc'}
+{$R 'DelphiSpecDUnitXDemo.res' '..\Source\DelphiSpecI18n.rc'}
 
 uses
-  System.SysUtils,
-  System.Classes,
+  SysUtils,
+  Classes,
   DelphiSpec.Core,
   DelphiSpec.Scenario,
   Generics.Collections,

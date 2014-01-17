@@ -7,7 +7,7 @@ uses
   DelphiSpec.Scenario,
   DUnitX.Extensibility;
 
-procedure RegisterFeaturesWithDUnitX(const rootName : string; const Features: TObjectList<TFeature>);
+procedure RegisterFeaturesWithDUnitX(const RootName: string; const Features: TObjectList<TFeature>);
 
 implementation
 
@@ -17,11 +17,10 @@ uses
   DelphiSpec.StepDefinitions;
 
 var
-  _Features : TObjectList<TFeature>;
-  _RootName : string;
+  _Features: TObjectList<TFeature>;
+  _RootName: string;
 
-
-procedure RegisterFeaturesWithDUnitX(const rootName : string; const Features: TObjectList<TFeature>);
+procedure RegisterFeaturesWithDUnitX(const RootName: string; const Features: TObjectList<TFeature>);
 begin
   _RootName := rootName;
   _Features := Features;
@@ -30,90 +29,87 @@ end;
 type
   TDelphiSpecFixtureProvider = class(TInterfacedObject,IFixtureProvider)
   protected
-    procedure Execute(const context: IFixtureProviderContext);
+    procedure Execute(const Context: IFixtureProviderContext);
   end;
 
   TDelphiSpecPlugin = class(TInterfacedObject,IPlugin)
   protected
-    procedure GetPluginFeatures(const context: IPluginLoadContext);
+    procedure GetPluginFeatures(const Context: IPluginLoadContext);
   end;
 
   TDUnitXScenario = class
   private
-    FScenario : TScenario;
+    FScenario: TScenario;
   public
-    constructor Create(const AScenario : TScenario);
-  published
+    constructor Create(const Scenario : TScenario);
+  public
     procedure Execute;
   end;
 
-
 { TDelphiSpecPlugin }
 
-procedure TDelphiSpecPlugin.GetPluginFeatures(const context: IPluginLoadContext);
+procedure TDelphiSpecPlugin.GetPluginFeatures(const Context: IPluginLoadContext);
 begin
-  context.RegisterFixtureProvider(TDelphiSpecFixtureProvider.Create);
+  Context.RegisterFixtureProvider(TDelphiSpecFixtureProvider.Create);
 end;
 
 { TDelphiSpecFixtureProvider }
 
-procedure TDelphiSpecFixtureProvider.Execute(const context: IFixtureProviderContext);
+procedure TDelphiSpecFixtureProvider.Execute(const Context: IFixtureProviderContext);
 var
-  feature: TFeature;
+  Feature: TFeature;
   ScenarioOutline: TScenarioOutline;
 
-  rootFixture : ITestFixture;
+  RootFixture: ITestFixture;
 
-  featureFixture : ITestFixture;
-  outlineFixture : ITestFixture;
-  scenarioFixture : ITestFixture;
-  StepDefs: TStepDefinitions;
+  FeatureFixture: ITestFixture;
+  OutlineFixture: ITestFixture;
+  ScenarioFixture: ITestFixture;
 
-  procedure BuildTests(const parentFixture : ITestFixture; const scenarios : TObjectList<TScenario>);
+  procedure BuildTests(const ParentFixture: ITestFixture; const Scenarios: TObjectList<TScenario>);
   var
-    fixtureInstance  : TDUnitXScenario;
-    testMethod : TTestMethod;
-    method : TMethod;
-    scenario : TScenario;
+    FixtureInstance: TDUnitXScenario;
+    TestMethod: TTestMethod;
+    Method: TMethod;
+    Scenario: TScenario;
   begin
-    for scenario in scenarios do
+    for Scenario in Scenarios do
     begin
-       fixtureInstance := TDUnitXScenario.Create(scenario);
-       scenarioFixture := parentFixture.AddChildFixture(fixtureInstance,scenario.Name);
+       FixtureInstance := TDUnitXScenario.Create(Scenario);
+       ScenarioFixture := parentFixture.AddChildFixture(FixtureInstance, Scenario.Name);
 
-       method.Data :=  fixtureInstance;
-       method.Code := @TDUnitXScenario.Execute;
+       Method.Data := FixtureInstance;
+       Method.Code := @TDUnitXScenario.Execute;
 
-       testMethod := TTestMethod(method);
-       scenarioFixture.AddTest(testMethod,scenario.Name);
+       TestMethod := TTestMethod(Method);
+       ScenarioFixture.AddTest(TestMethod, Scenario.Name);
     end;
   end;
 
-
 begin
   if (_Features = nil) or (_Features.Count < 1) then
-    exit;
+    Exit;
 
-  rootFixture := context.CreateFixture(TObject,_RootName);
+  RootFixture := Context.CreateFixture(TObject, _RootName);
 
-  for feature in _Features do
+  for Feature in _Features do
   begin
-    featureFixture := rootFixture.AddChildFixture(TObject,feature.Name);
-    BuildTests(featureFixture,feature.Scenarios);
+    FeatureFixture := RootFixture.AddChildFixture(TObject, Feature.Name);
+    BuildTests(FeatureFixture, Feature.Scenarios);
 
     for ScenarioOutline in Feature.ScenarioOutlines do
     begin
-      outlineFixture := featureFixture.AddChildFixture(TObject,ScenarioOutline.Name);
-      BuildTests(outlineFixture,ScenarioOutline.Scenarios);
+      OutlineFixture := FeatureFixture.AddChildFixture(TObject, ScenarioOutline.Name);
+      BuildTests(OutlineFixture, ScenarioOutline.Scenarios);
     end;
   end;
 end;
 
 { TDUnitXScenario }
 
-constructor TDUnitXScenario.Create(const AScenario: TScenario);
+constructor TDUnitXScenario.Create(const Scenario: TScenario);
 begin
-  FScenario := AScenario;
+  FScenario := Scenario;
 end;
 
 procedure TDUnitXScenario.Execute;
