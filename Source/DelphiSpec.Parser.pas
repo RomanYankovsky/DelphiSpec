@@ -227,8 +227,12 @@ const
   function ReadDataTable: IDataTable;
   var
     DataTable: TDataTable;
+    ColumnNames: TStringDynArray;
   begin
-    DataTable := TDataTable.Create(StrToArray(FReader.ReadLine));
+    ColumnNames := StrToArray(FReader.ReadLine);
+
+    DataTable := TDataTable.Create(Length(ColumnNames));
+    DataTable.AddRow(ColumnNames);
 
     while TableInNextLine do
       DataTable.AddRow(StrToArray(FReader.ReadLine));

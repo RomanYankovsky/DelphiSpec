@@ -71,6 +71,9 @@ type
     [Then_('Table is')]
     procedure TestTable(Value: TArray<TTableRow>);
 
+    [Then_('Two dim array is')]
+    procedure TestTwoDimArray(Value: TArray<TArray<Integer>>);
+
     procedure Given_I_have_N_apples(const N: Integer);
 
     [Then_('I have $M apples')]
@@ -112,6 +115,7 @@ const
   PyStrParamStepText = 'PyString is:';
   TableParamStepText = 'Table is:';
   NamedParamStepText = 'I have 3 apples';
+  TwoDimArrayParamStepText = 'Two dim array is:';
 
 implementation
 
@@ -155,11 +159,18 @@ procedure Test_TScenario.Test_DataTableParameter;
 var
   Table: TDataTable;
 begin
-  Table := TDataTable.Create(['key', 'value']);
+  Table := TDataTable.Create(2);
+  Table.AddRow(['key', 'value']);
   Table.AddRow(['1', 'a']);
   Table.AddRow(['2', 'b']);
 
   AddStepAndCheckExecute(TTestParamSteps, Then_Attribute, TableParamStepText, '', Table);
+
+  Table := TDataTable.Create(2);
+  Table.AddRow(['0', '1']);
+  Table.AddRow(['2', '3']);
+
+  AddStepAndCheckExecute(TTestParamSteps, Then_Attribute, TwoDimArrayParamStepText, '', Table);
 end;
 
 procedure Test_TScenario.Test_NamedParameterInMethodName;
@@ -313,6 +324,15 @@ begin
   if (Length(Value) = 2)
     and (Value[0].Key = 1) and (Value[1].Key = 2)
     and (Value[0].Value = 'a') and (Value[1].Value = 'b') then
+
+      SetTestPassed;
+end;
+
+procedure TTestParamSteps.TestTwoDimArray(Value: TArray<TArray<Integer>>);
+begin
+  if (Length(Value) = 2) and (Length(Value[0]) = 2)
+    and (Value[0][0] = 0) and (Value[0][1] = 1)
+    and (Value[1][0] = 2) and (Value[1][1] = 3) then
 
       SetTestPassed;
 end;

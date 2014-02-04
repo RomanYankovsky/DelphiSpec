@@ -172,7 +172,7 @@ begin
       SetLength(Values, Length(Strings));
       ElementType := (ParamType as TRttiDynamicArrayType).ElementType;
       for I := Low(Strings) to High(Strings) do
-        Values[i] := ConvertParamValue(Trim(Strings[I]), ElementType);
+        Values[I] := ConvertParamValue(Trim(Strings[I]), ElementType);
       Result := TValue.FromArray(ParamType.Handle, Values);
     end;
   else
@@ -193,21 +193,57 @@ end;
 
 function TScenario.ConvertDataTable(DataTable: IDataTable;
   ParamType: TRttiType): TValue;
+
+  function ConvertDataTableToArrayOfRecords(DataTable: IDataTable;
+    ElementType: TRttiType): TArray<TValue>;
+  var
+    I, J: Integer;
+    RttiField: TRttiField;
+  begin
+    SetLength(Result, DataTable.RowCount - 1);
+
+    for I := 0 to DataTable.RowCount - 2 do
+    begin
+      TValue.Make(nil, ElementType.Handle, Result[I]);
+      for J := 0 to DataTable.ColCount - 1 do
+      begin
+        RttiField := ElementType.AsRecord.GetField(DataTable.Values[J, 0]);
+        RttiField.SetValue(Result[I].GetReferenceToRawData,
+          ConvertParamValue(DataTable.Values[J, I + 1], RttiField.FieldType));
+      end;
+    end;
+  end;
+
+  function ConvertDataTableToTwoDimArray(DataTable: IDataTable;
+    ElementType: TRttiType): TArray<TValue>;
+  var
+    I, J: Integer;
+    ArrayLength: Integer;
+  begin
+    SetLength(Result, DataTable.RowCount);
+
+    for I := 0 to DataTable.ColCount - 1 do
+    begin
+      TValue.Make(nil, ElementType.Handle, Result[I]);
+
+      ArrayLength := DataTable.RowCount;
+      DynArraySetLength(PPointer(Result[I].GetReferenceToRawData)^, Result[I].TypeInfo, 1, @ArrayLength);
+      for J := 0 to DataTable.RowCount - 1 do
+        Result[I].SetArrayElement(J,
+          ConvertParamValue(DataTable.Values[J, I], (ElementType as TRttiDynamicArrayType).ElementType));
+    end;
+  end;
+
 var
-  I: Integer;
-  RttiField: TRttiField;
   Values: TArray<TValue>;
   ElementType: TRttiType;
 begin
   ElementType := (ParamType as TRttiDynamicArrayType).ElementType;
-
-  SetLength(Values, DataTable.RowCount);
-  for I := 0 to DataTable.RowCount - 1 do
-  begin
-    TValue.Make(nil, ElementType.Handle, Values[I]);
-    for RttiField in ElementType.AsRecord.GetFields do
-      RttiField.SetValue(Values[I].GetReferenceToRawData,
-        ConvertParamValue(DataTable[RttiField.Name][I], RttiField.FieldType));
+  case ElementType.TypeKind of
+    TTypeKind.tkRecord:
+      Values := ConvertDataTableToArrayOfRecords(DataTable, ElementType);
+    TTypeKind.tkDynArray:
+      Values := ConvertDataTableToTwoDimArray(DataTable, ElementType);
   end;
 
   Result := TValue.FromArray(ParamType.Handle, Values);
@@ -361,8 +397,8 @@ procedure TScenarioOutline.PrepareScenarios;
     Result := Step;
 
     for I := 0 to FExamples.ColCount - 1 do
-      Result := TRegEx.Replace(Result, '<' + FExamples.Names[I] + '>',
-        FExamples[FExamples.Names[I]][Index], [TRegExOption.roIgnoreCase]);
+      Result := TRegEx.Replace(Result, '<' + FExamples.Values[I, 0] + '>',
+        FExamples.Values[I, Index], [TRegExOption.roIgnoreCase]);
   end;
 
 var
@@ -370,7 +406,7 @@ var
   Scenario: TScenario;
   Step: TStep;
 begin
-  for I := 0 to FExamples.RowCount - 1 do
+  for I := 1 to FExamples.RowCount - 1 do
   begin
     Scenario := TScenario.Create(Feature, Name + Format(' [case %d]', [I + 1]));
 
