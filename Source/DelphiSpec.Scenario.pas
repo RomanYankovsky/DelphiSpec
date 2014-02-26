@@ -408,7 +408,7 @@ var
 begin
   for I := 1 to FExamples.RowCount - 1 do
   begin
-    Scenario := TScenario.Create(Feature, Name + Format(' [case %d]', [I + 1]));
+    Scenario := TScenario.Create(Feature, Name + Format(' [case %d]', [I]));
 
     for Step in FGiven do
       Scenario.AddGiven(PutValues(Step.Value, I), Step.DataTable, PutValues(Step.PyString, I));
