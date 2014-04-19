@@ -463,22 +463,15 @@ const
 var
   I: Integer;
   LangNode: IXMLNode;
-  StepKindName, StepNodeValue: string;
+  StepKindName: string;
 begin
   Result := False;
   LangNode := FLangXML.DocumentElement.ChildNodes.FindNode(LangCode);
   StepKindName := GetStepKindAsString(StepKind);
 
   for I := 0 to LangNode.ChildNodes.Count - 1 do
-    if (LangNode.ChildNodes[I].NodeName = StepKindName) then
+    if (LangNode.ChildNodes[I].NodeName = StepKindName) and StartsText(LangNode.ChildNodes[I].NodeValue + StepDelimiter, S) then
     begin
-      StepNodeValue := LangNode.ChildNodes[I].NodeValue;
-      if Length(StepNodeValue) = 1 then
-        StepNodeValue := LangNode.ChildNodes[I].NodeValue + StepDelimiter;
-
-      if not StartsText(StepNodeValue, S) then
-        Continue;
-
       Result := True;
       Break;
     end;
