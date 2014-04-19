@@ -16,7 +16,6 @@ type
     class function GetStepKindAsString(StepKind: TStepKind): string; static;
   public
     class constructor Create;
-
     class function CheckStepKind(StepKind: TStepKind; const S: string; const LangCode: string): Boolean;
     class function GetStepText(StepKind: TStepKind; const S: string; const LangCode: string): string;
   end;
@@ -459,6 +458,8 @@ begin
 end;
 
 class function TDelphiSpecLanguages.CheckStepKind(StepKind: TStepKind; const S: string; const LangCode: string): Boolean;
+const
+  StepDelimiter = ' ';
 var
   I: Integer;
   LangNode: IXMLNode;
@@ -469,7 +470,7 @@ begin
   StepKindName := GetStepKindAsString(StepKind);
 
   for I := 0 to LangNode.ChildNodes.Count - 1 do
-    if (LangNode.ChildNodes[I].NodeName = StepKindName) and StartsText(LangNode.ChildNodes[I].NodeValue, S) then
+    if (LangNode.ChildNodes[I].NodeName = StepKindName) and StartsText(LangNode.ChildNodes[I].NodeValue + StepDelimiter, S) then
     begin
       Result := True;
       Break;
