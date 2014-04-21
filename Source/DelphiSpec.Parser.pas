@@ -80,7 +80,7 @@ implementation
 {$R DelphiSpecI18n.res}
 
 uses
-  StrUtils, Types, XmlDoc,
+  StrUtils, Types, XmlDoc, Variants,
 {$IFDEF MSWINDOWS}
   Windows, ActiveX,
 {$ENDIF}
@@ -458,8 +458,6 @@ begin
 end;
 
 class function TDelphiSpecLanguages.CheckStepKind(StepKind: TStepKind; const S: string; const LangCode: string): Boolean;
-const
-  StepDelimiter = ' ';
 var
   I: Integer;
   LangNode: IXMLNode;
@@ -470,7 +468,8 @@ begin
   StepKindName := GetStepKindAsString(StepKind);
 
   for I := 0 to LangNode.ChildNodes.Count - 1 do
-    if (LangNode.ChildNodes[I].NodeName = StepKindName) and StartsText(LangNode.ChildNodes[I].NodeValue + StepDelimiter, S) then
+    if (LangNode.ChildNodes[I].NodeName = StepKindName) and
+      (StartsText(LangNode.ChildNodes[I].NodeValue + ' ', S) or StartsText(LangNode.ChildNodes[I].NodeValue + ':', S)) then
     begin
       Result := True;
       Break;
@@ -488,9 +487,10 @@ begin
   StepKindName := GetStepKindAsString(StepKind);
 
   for I := 0 to LangNode.ChildNodes.Count - 1 do
-    if (LangNode.ChildNodes[I].NodeName = StepKindName) and StartsText(LangNode.ChildNodes[I].NodeValue, S) then
+    if (LangNode.ChildNodes[I].NodeName = StepKindName) and
+      (StartsText(LangNode.ChildNodes[I].NodeValue + ' ', S) or StartsText(LangNode.ChildNodes[I].NodeValue + ':', S)) then
     begin
-      Result := Trim(Copy(S, Length(LangNode.ChildNodes[I].NodeValue) + 1));
+      Result := Trim(Copy(S, High(VarToStr(LangNode.ChildNodes[I].NodeValue)) + 2));
       Break;
     end;
 end;
