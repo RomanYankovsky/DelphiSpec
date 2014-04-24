@@ -20,7 +20,7 @@ procedure Test_TDelphiSpecLanguages.Test_CheckStepKind;
 begin
   self.CheckTrue(TDelphiSpecLanguages.CheckStepKind(skFeature, 'Feature: EN feature', 'EN'));
   self.CheckFalse(TDelphiSpecLanguages.CheckStepKind(skGiven, 'Feature: EN feature', 'EN'));
-  self.CheckTrue(TDelphiSpecLanguages.CheckStepKind(skFeature, 'Aspecto: PT_BR feature', 'PT_BR'));
+  self.CheckTrue(TDelphiSpecLanguages.CheckStepKind(skFeature, 'Funcionalidade: PT_BR feature', 'PT_BR'));
 
   self.CheckFalse(TDelphiSpecLanguages.CheckStepKind(skAnd, 'Então in PT_BR is then', 'PT_BR'));
   self.CheckFalse(TDelphiSpecLanguages.CheckStepKind(skAnd, 'Esboço do Cenário: in PT_BR is ScenarioOutline', 'PT_BR'));
