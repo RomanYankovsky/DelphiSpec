@@ -46,6 +46,14 @@ type
     property LineNo: Integer read FLineNo;
   end;
 
+  EDelphiSpecClassNoFound = class(Exception)
+  private
+    FFeatureName: string;
+  public
+    constructor CreateAtClassNotFount(FeatureName: string); overload;
+    property FeatureName: string read FFeatureName;
+  end;
+
   EDelphiSpecUnexpectedEof = class(Exception);
 
   TDelphiSpecParser = class
@@ -56,6 +64,7 @@ type
     procedure CheckEof;
     procedure PassEmptyLines;
     procedure RaiseSyntaxError;
+    procedure RaiseClassStepNotFound(FeatureName: string);
 
     function TryReadDataTable: IDataTable;
     function TryReadPyString: string;
@@ -195,11 +204,16 @@ begin
       RaiseSyntaxError;
 
     FeatureName := TDelphiSpecLanguages.GetStepText(skFeature, Command, FLangCode);
+
+    if not ( CheckStepClassExists(FeatureName) ) then
+      RaiseClassStepNotFound(FeatureName);
+
+
     Feature := TFeature.Create(FeatureName, GetStepDefinitionsClass(FeatureName));
     Features.Add(Feature);
-
     FeatureNode(Feature);
   end;
+
 end;
 
 function TDelphiSpecParser.TryReadDataTable: IDataTable;
@@ -357,6 +371,11 @@ begin
       Break;
 end;
 
+procedure TDelphiSpecParser.RaiseClassStepNotFound(FeatureName: string);
+begin
+  raise EDelphiSpecClassNoFound.CreateAtClassNotFount(FeatureName);
+end;
+
 procedure TDelphiSpecParser.RaiseSyntaxError;
 begin
   raise EDelphiSpecSyntaxError.CreateAtLine(FReader.LineNo);
@@ -503,5 +522,13 @@ begin
   FLineNo := LineNo;
 end;
 
+
+{ EDelphiSpecClassNoFound }
+
+constructor EDelphiSpecClassNoFound.CreateAtClassNotFount(FeatureName: string);
+begin
+  inherited Create('Class not found to feature');
+  FFeatureName:= FeatureName;
+end;
 
 end.
