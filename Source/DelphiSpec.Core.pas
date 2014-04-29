@@ -9,6 +9,7 @@ function ReadFeatures(const Path: string; Recursive: Boolean; const LangCode: st
 
 function GetStepDefinitionsClass(const Name: string): TStepDefinitionsClass;
 procedure RegisterStepDefinitionsClass(StepDefinitionsClass: TStepDefinitionsClass);
+function CheckStepClassExists(const Name: string): Boolean;
 
 implementation
 
@@ -46,6 +47,12 @@ begin
   Result := __StepDefsClassList[AnsiLowerCase(Name)];
 end;
 
+function CheckStepClassExists(const Name: string): Boolean;
+begin
+  Result:=
+    __StepDefsClassList.ContainsKey( AnsiLowerCase(Name) );
+end;
+
 function ReadFeatures(const Path: string; Recursive: Boolean; const LangCode: string): TObjectList<TFeature>;
 var
   FileName: string;
@@ -69,6 +76,8 @@ begin
           raise Exception.CreateFmt('Syntax error: line %d at %s', [E.LineNo, FileName]);
         on E: EDelphiSpecUnexpectedEof do
           raise Exception.CreateFmt('Unexpected end of file at %s', [FileName]);
+        on E: EDelphiSpecClassNotFound do
+          raise Exception.CreateFmt('Class not implemented for feature %s in the file %s', [E.FeatureName, FileName]);
       end;
     finally
       Parser.Free;
