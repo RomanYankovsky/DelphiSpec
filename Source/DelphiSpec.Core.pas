@@ -76,7 +76,7 @@ begin
           raise Exception.CreateFmt('Syntax error: line %d at %s', [E.LineNo, FileName]);
         on E: EDelphiSpecUnexpectedEof do
           raise Exception.CreateFmt('Unexpected end of file at %s', [FileName]);
-        on E: EDelphiSpecClassNoFound do
+        on E: EDelphiSpecClassNotFound do
           raise Exception.CreateFmt('Class not implemented for feature %s in the file %s', [E.FeatureName, FileName]);
       end;
     finally

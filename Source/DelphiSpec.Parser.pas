@@ -46,11 +46,11 @@ type
     property LineNo: Integer read FLineNo;
   end;
 
-  EDelphiSpecClassNoFound = class(Exception)
+  EDelphiSpecClassNotFound = class(Exception)
   private
     FFeatureName: string;
   public
-    constructor CreateAtClassNotFount(FeatureName: string); overload;
+    constructor CreateAtClassNotFound(FeatureName: string); overload;
     property FeatureName: string read FFeatureName;
   end;
 
@@ -207,7 +207,6 @@ begin
 
     if not ( CheckStepClassExists(FeatureName) ) then
       RaiseClassStepNotFound(FeatureName);
-
 
     Feature := TFeature.Create(FeatureName, GetStepDefinitionsClass(FeatureName));
     Features.Add(Feature);
@@ -373,7 +372,7 @@ end;
 
 procedure TDelphiSpecParser.RaiseClassStepNotFound(FeatureName: string);
 begin
-  raise EDelphiSpecClassNoFound.CreateAtClassNotFount(FeatureName);
+  raise EDelphiSpecClassNotFound.CreateAtClassNotFound(FeatureName);
 end;
 
 procedure TDelphiSpecParser.RaiseSyntaxError;
@@ -525,7 +524,7 @@ end;
 
 { EDelphiSpecClassNoFound }
 
-constructor EDelphiSpecClassNoFound.CreateAtClassNotFount(FeatureName: string);
+constructor EDelphiSpecClassNotFound.CreateAtClassNotFound(FeatureName: string);
 begin
   inherited Create('Class not found to feature');
   FFeatureName:= FeatureName;
