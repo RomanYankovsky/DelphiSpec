@@ -4,6 +4,8 @@ program DelphiSpecDemo;
 {$APPTYPE CONSOLE}
 {$ENDIF}
 
+{$R DelphiSpecI18n.res DelphiSpecI18n.rc}
+
 uses
   DUnitTestRunner,
   SampleCalculator in 'SampleCalculator.pas',

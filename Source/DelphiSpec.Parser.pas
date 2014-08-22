@@ -86,8 +86,6 @@ type
 
 implementation
 
-{$R DelphiSpecI18n.res}
-
 uses
   StrUtils, Types, XmlDoc, Variants,
 {$IFDEF MSWINDOWS}
