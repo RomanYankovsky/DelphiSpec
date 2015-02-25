@@ -81,7 +81,7 @@
 				<MainSource>MainSource</MainSource>
 			</DelphiCompile>
 			<RcCompile Include="..\Source\DelphiSpecI18n.rc">
-				<Form>DelphiSpecDUnitXDemo.res</Form>
+				<Form>DelphiSpecI18n.res</Form>
 			</RcCompile>
 			<DCCReference Include="SampleAccountsStepDefs.pas"/>
 			<DCCReference Include="SampleCalculator.pas"/>

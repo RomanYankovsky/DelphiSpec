@@ -7,7 +7,7 @@ uses
   DelphiSpec.Scenario,
   DUnitX.Extensibility;
 
-procedure RegisterFeaturesWithDUnitX(const RootName: string; const Features: TObjectList<TFeature>);
+procedure RegisterFeaturesWithDUnitX(const RootName: string; const Features: TFeatureList);
 
 implementation
 
@@ -17,10 +17,10 @@ uses
   DelphiSpec.StepDefinitions;
 
 var
-  _Features: TObjectList<TFeature>;
+  _Features: TFeatureList;
   _RootName: string;
 
-procedure RegisterFeaturesWithDUnitX(const RootName: string; const Features: TObjectList<TFeature>);
+procedure RegisterFeaturesWithDUnitX(const RootName: string; const Features: TFeatureList);
 begin
   _RootName := rootName;
   _Features := Features;
@@ -66,7 +66,7 @@ var
   OutlineFixture: ITestFixture;
   ScenarioFixture: ITestFixture;
 
-  procedure BuildTests(const ParentFixture: ITestFixture; const Scenarios: TObjectList<TScenario>);
+  procedure BuildTests(const ParentFixture: ITestFixture; const Scenarios: TScenarioList);
   var
     FixtureInstance: TDUnitXScenario;
     TestMethod: TTestMethod;

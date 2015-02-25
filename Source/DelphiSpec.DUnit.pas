@@ -5,7 +5,7 @@ interface
 uses
   Generics.Collections, DelphiSpec.Scenario;
 
-procedure CreateDUnitTests(Features: TObjectList<TFeature>);
+procedure CreateDUnitTests(Features: TFeatureList);
 
 implementation
 
@@ -15,7 +15,7 @@ uses
 type
   TDelphiSpecTestSuite = class(TTestSuite)
   public
-    constructor Create(const Name: string; Scenarios: TObjectList<TScenario>); overload; virtual;
+    constructor Create(const Name: string; Scenarios: TScenarioList); overload; virtual;
   end;
 
   TDelphiSpecTestCase = class(TAbstractTest)
@@ -26,7 +26,7 @@ type
     constructor Create(Scenario: TScenario); overload; virtual;
   end;
 
-procedure CreateDUnitTests(Features: TObjectList<TFeature>);
+procedure CreateDUnitTests(Features: TFeatureList);
 var
   Feature: TFeature;
   Suite: TDelphiSpecTestSuite;
@@ -80,7 +80,7 @@ end;
 
 { TDelphiSpecTestSuite }
 
-constructor TDelphiSpecTestSuite.Create(const Name: string; Scenarios: TObjectList<TScenario>);
+constructor TDelphiSpecTestSuite.Create(const Name: string; Scenarios: TScenarioList);
 var
   Scenario: TScenario;
 begin

@@ -18,7 +18,7 @@ uses
   DelphiSpec.DUnit;
 
 var
-  Features: TObjectList<TFeature>;
+  Features: TFeatureList;
 begin
   ReportMemoryLeaksOnShutdown := True;
 

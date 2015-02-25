@@ -7,15 +7,22 @@ uses
   DelphiSpec.DataTable, Rtti;
 
 type
+  TFeature = class; // forward declaration
   TScenario = class; // forward declaration
   TScenarioOutline = class; // forward declaration;
+
+  TFeatureList = class(TObjectList<TFeature>);
+  TScenarioList = class(TObjectList<TScenario>);
+  TScenarioOutlineList = class(TObjectList<TScenarioOutline>);
+
+  TValueArray = TArray<TValue>;
 
   TFeature = class
   private
     FName: string;
     FBackground: TScenario;
-    FScenarios: TObjectList<TScenario>;
-    FScenarioOutlines: TObjectList<TScenarioOutline>;
+    FScenarios: TScenarioList;
+    FScenarioOutlines: TScenarioOutlineList;
     FStepDefsClass: TStepDefinitionsClass;
   public
     constructor Create(const Name: string; StepDefsClass: TStepDefinitionsClass); reintroduce;
@@ -23,8 +30,8 @@ type
 
     property Background: TScenario read FBackground write FBackground;
     property Name: string read FName;
-    property Scenarios: TObjectList<TScenario> read FScenarios;
-    property ScenarioOutlines: TObjectList<TScenarioOutline> read FScenarioOutlines;
+    property Scenarios: TScenarioList read FScenarios;
+    property ScenarioOutlines: TScenarioOutlineList read FScenarioOutlines;
     property StepDefinitionsClass: TStepDefinitionsClass read FStepDefsClass;
   end;
 
@@ -43,6 +50,8 @@ type
       property DataTable: IDataTable read FDataTable;
       property PyString: string read FPyString;
     end;
+
+    TStepList = class(TObjectList<TStep>);
   strict private
     FName: string;
     FFeature: TFeature;
@@ -56,9 +65,9 @@ type
     function PrepareStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass;
       const MethodName: string; const Params: TArray<TRttiParameter>): string;
   protected
-    FGiven: TObjectList<TStep>;
-    FWhen: TObjectList<TStep>;
-    FThen: TObjectList<TStep>;
+    FGiven: TStepList;
+    FWhen: TStepList;
+    FThen: TStepList;
   public
     constructor Create(Parent: TFeature; const Name: string); reintroduce; virtual;
     destructor Destroy; override;
@@ -76,9 +85,9 @@ type
   TScenarioOutline = class(TScenario)
   private
     FExamples: IDataTable;
-    FScenarios: TObjectList<TScenario>;
+    FScenarios: TScenarioList;
     FScenariosReady: Boolean;
-    function GetScenarios: TObjectList<TScenario>;
+    function GetScenarios: TScenarioList;
     procedure PrepareScenarios;
   public
     constructor Create(Parent: TFeature; const Name: string); override;
@@ -86,7 +95,7 @@ type
 
     procedure SetExamples(Examples: IDataTable);
 
-    property Scenarios: TObjectList<TScenario> read GetScenarios;
+    property Scenarios: TScenarioList read GetScenarios;
   end;
 
 implementation
@@ -101,8 +110,8 @@ begin
   inherited Create;
   FName := Name;
   FBackground := nil;
-  FScenarios := TObjectList<TScenario>.Create(True);
-  FScenarioOutlines := TObjectList<TScenarioOutline>.Create(True);
+  FScenarios := TScenarioList.Create(True);
+  FScenarioOutlines := TScenarioOutlineList.Create(True);
   FStepDefsClass := StepDefsClass;
 end;
 
@@ -157,7 +166,7 @@ const
   Delimiter = ',';
 var
   Strings: TStringDynArray;
-  Values: TArray<TValue>;
+  Values: TValueArray;
   I: Integer;
   ElementType: TRttiType;
 begin
@@ -186,16 +195,16 @@ begin
   FFeature := Parent;
   FName := Name;
 
-  FGiven := TObjectList<TStep>.Create(True);
-  FWhen := TObjectList<TStep>.Create(True);
-  FThen := TObjectList<TStep>.Create(True);
+  FGiven := TStepList.Create(True);
+  FWhen := TStepList.Create(True);
+  FThen := TStepList.Create(True);
 end;
 
 function TScenario.ConvertDataTable(DataTable: IDataTable;
   ParamType: TRttiType): TValue;
 
   function ConvertDataTableToArrayOfRecords(DataTable: IDataTable;
-    ElementType: TRttiType): TArray<TValue>;
+    ElementType: TRttiType): TValueArray;
   var
     I, J: Integer;
     RttiField: TRttiField;
@@ -215,7 +224,7 @@ function TScenario.ConvertDataTable(DataTable: IDataTable;
   end;
 
   function ConvertDataTableToTwoDimArray(DataTable: IDataTable;
-    ElementType: TRttiType): TArray<TValue>;
+    ElementType: TRttiType): TValueArray;
   var
     I, J: Integer;
     ArrayLength: Integer;
@@ -235,7 +244,7 @@ function TScenario.ConvertDataTable(DataTable: IDataTable;
   end;
 
 var
-  Values: TArray<TValue>;
+  Values: TValueArray;
   ElementType: TRttiType;
 begin
   ElementType := (ParamType as TRttiDynamicArrayType).ElementType;
@@ -310,7 +319,7 @@ var
   I: Integer;
   S: string;
   Params: TArray<TRttiParameter>;
-  Values: TArray<TValue>;
+  Values: TValueArray;
 begin
   Params := RttiMethod.GetParameters;
   S := PrepareStep(Value, AttributeClass, RttiMethod.Name, Params);
@@ -368,7 +377,7 @@ begin
   inherited;
   FScenariosReady := False;
   FExamples := nil;
-  FScenarios := TObjectList<TScenario>.Create(True);
+  FScenarios := TScenarioList.Create(True);
 end;
 
 destructor TScenarioOutline.Destroy;
@@ -377,7 +386,7 @@ begin
   inherited;
 end;
 
-function TScenarioOutline.GetScenarios: TObjectList<TScenario>;
+function TScenarioOutline.GetScenarios: TScenarioList;
 begin
   if not FScenariosReady then
   begin

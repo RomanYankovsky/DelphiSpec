@@ -5,7 +5,7 @@ interface
 uses
   Generics.Collections, DelphiSpec.StepDefinitions, DelphiSpec.Scenario;
 
-function ReadFeatures(const Path: string; Recursive: Boolean; const LangCode: string): TObjectList<TFeature>;
+function ReadFeatures(const Path: string; Recursive: Boolean; const LangCode: string): TFeatureList;
 
 function GetStepDefinitionsClass(const Name: string): TStepDefinitionsClass;
 procedure RegisterStepDefinitionsClass(StepDefinitionsClass: TStepDefinitionsClass);
@@ -53,7 +53,7 @@ begin
     __StepDefsClassList.ContainsKey( AnsiLowerCase(Name) );
 end;
 
-function ReadFeatures(const Path: string; Recursive: Boolean; const LangCode: string): TObjectList<TFeature>;
+function ReadFeatures(const Path: string; Recursive: Boolean; const LangCode: string): TFeatureList;
 var
   FileName: string;
   Parser: TDelphiSpecParser;
@@ -64,7 +64,7 @@ begin
   else
     SearchMode := TSearchOption.soTopDirectoryOnly;
 
-  Result := TObjectList<TFeature>.Create(True);
+  Result := TFeatureList.Create(True);
   try
     Parser := TDelphiSpecParser.Create(LangCode);
     try
