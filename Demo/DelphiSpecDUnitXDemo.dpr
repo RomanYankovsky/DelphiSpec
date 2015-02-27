@@ -1,7 +1,9 @@
 program DelphiSpecDUnitXDemo;
 
 {$APPTYPE CONSOLE}
-{$R 'DelphiSpecDUnitXDemo.res' '..\Source\DelphiSpecI18n.rc'}
+
+
+{$R 'DelphiSpecI18n.res' '..\Source\DelphiSpecI18n.rc'}
 
 uses
   SysUtils,

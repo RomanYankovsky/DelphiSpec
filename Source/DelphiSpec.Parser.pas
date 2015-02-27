@@ -81,7 +81,7 @@ type
     constructor Create(const LangCode: string);
     destructor Destroy; override;
 
-    procedure Execute(const FileName: string; Features: TObjectList<TFeature>);
+    procedure Execute(const FileName: string; Features: TFeatureList);
   end;
 
 implementation
@@ -185,7 +185,7 @@ begin
 end;
 
 procedure TDelphiSpecParser.Execute(const FileName: string;
-  Features: TObjectList<TFeature>);
+  Features: TFeatureList);
 var
   Command, FeatureName: string;
   Feature: TFeature;
@@ -506,7 +506,7 @@ begin
     if (LangNode.ChildNodes[I].NodeName = StepKindName) and
       (StartsText(LangNode.ChildNodes[I].NodeValue + ' ', S) or StartsText(LangNode.ChildNodes[I].NodeValue + ':', S)) then
     begin
-      Result := Trim(Copy(S, High(VarToStr(LangNode.ChildNodes[I].NodeValue)) + 2));
+      Result := Trim(Copy(S, Length(VarToStr(LangNode.ChildNodes[I].NodeValue)) + 2));
       Break;
     end;
 end;
