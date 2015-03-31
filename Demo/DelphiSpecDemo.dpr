@@ -4,7 +4,7 @@ program DelphiSpecDemo;
 {$APPTYPE CONSOLE}
 {$ENDIF}
 
-{$R DelphiSpecI18n.res DelphiSpecI18n.rc}
+{$R 'DelphiSpecI18n.res' '..\Source\DelphiSpecI18n.rc'}
 
 uses
   DUnitTestRunner,
