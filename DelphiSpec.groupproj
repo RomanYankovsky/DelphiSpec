@@ -1,0 +1,60 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{29E6B05B-FC1E-453C-84FA-BE2D2AA78790}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="FeatureCompile\FeatureCompile.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Demo\DelphiSpecDemo.dproj">
+            <Dependencies>FeatureCompile\FeatureCompile.dproj</Dependencies>
+        </Projects>
+        <Projects Include="Demo\DelphiSpecDUnitXDemo.dproj">
+            <Dependencies>FeatureCompile\FeatureCompile.dproj</Dependencies>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="FeatureCompile">
+        <MSBuild Projects="FeatureCompile\FeatureCompile.dproj"/>
+    </Target>
+    <Target Name="FeatureCompile:Clean">
+        <MSBuild Projects="FeatureCompile\FeatureCompile.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="FeatureCompile:Make">
+        <MSBuild Projects="FeatureCompile\FeatureCompile.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="DelphiSpecDemo" DependsOnTargets="FeatureCompile">
+        <MSBuild Projects="Demo\DelphiSpecDemo.dproj"/>
+    </Target>
+    <Target Name="DelphiSpecDemo:Clean" DependsOnTargets="FeatureCompile:Clean">
+        <MSBuild Projects="Demo\DelphiSpecDemo.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="DelphiSpecDemo:Make" DependsOnTargets="FeatureCompile:Make">
+        <MSBuild Projects="Demo\DelphiSpecDemo.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="DelphiSpecDUnitXDemo" DependsOnTargets="FeatureCompile">
+        <MSBuild Projects="Demo\DelphiSpecDUnitXDemo.dproj"/>
+    </Target>
+    <Target Name="DelphiSpecDUnitXDemo:Clean" DependsOnTargets="FeatureCompile:Clean">
+        <MSBuild Projects="Demo\DelphiSpecDUnitXDemo.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="DelphiSpecDUnitXDemo:Make" DependsOnTargets="FeatureCompile:Make">
+        <MSBuild Projects="Demo\DelphiSpecDUnitXDemo.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="FeatureCompile;DelphiSpecDemo;DelphiSpecDUnitXDemo"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="FeatureCompile:Clean;DelphiSpecDemo:Clean;DelphiSpecDUnitXDemo:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="FeatureCompile:Make;DelphiSpecDemo:Make;DelphiSpecDUnitXDemo:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
