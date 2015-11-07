@@ -2,7 +2,7 @@
 
 type
   [Feature('Calculator')]
-  TcalculatorTest = class(TcalculatorTestContext)
+  TCalculatorTest = class(TCalculatorTestContext)
   public
     procedure Given_I_have_entered_value_in_calculator(const value: Integer);
     procedure When_I_press_Add;
@@ -11,7 +11,7 @@ type
   end;
 
 const
-  calculatorSource: String = (
+  CalculatorSource: String = (
 'Feature: Calculator'#13#10 +
 '  In order to avoid silly mistakes'#13#10 +
 '  As a math idiot'#13#10 +
@@ -43,8 +43,8 @@ const
 '  Then the result should be 100 on the screen'#13#10
 );
 
-procedure RegistercalculatorTest;
+procedure RegisterCalculatorTest;
 begin
-  RegisterStepDefinitionsClass(TcalculatorTest);
-  TDelphiSpecParser.RegisterClass('calculator', 'EN', calculatorSource);
+  RegisterStepDefinitionsClass(TCalculatorTest);
+  TDelphiSpecParser.RegisterClass('Calculator', 'EN', CalculatorSource);
 end;

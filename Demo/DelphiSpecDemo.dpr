@@ -11,10 +11,10 @@ uses
   DelphiSpec.Scenario,
   DelphiSpec.DUnit,
   DelphiSpec.Parser,
-  SampleAccountsStepDefs in 'SampleAccountsStepDefs.pas',
+  TestAccounts in 'TestAccounts.pas',
   SampleCalculator in 'SampleCalculator.pas',
-  SampleCalculatorStepDefs in 'SampleCalculatorStepDefs.pas',
-  SampleSpamFilterStepDefs in 'SampleSpamFilterStepDefs.pas';
+  TestCalculator in 'TestCalculator.pas',
+  TestSpamFilter in 'TestSpamFilter.pas';
 
 begin
   CreateDUnitTests(TDelphiSpecParser.GetFeatures);

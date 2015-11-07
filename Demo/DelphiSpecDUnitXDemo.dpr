@@ -14,10 +14,10 @@ uses
   DUnitX.Loggers.Xml.NUnit,
   DUnitX.TestRunner,
   DUnitX.TestFramework,
-  SampleAccountsStepDefs in 'SampleAccountsStepDefs.pas',
+  TestAccounts in 'TestAccounts.pas',
   SampleCalculator in 'SampleCalculator.pas',
-  SampleCalculatorStepDefs in 'SampleCalculatorStepDefs.pas',
-  SampleSpamFilterStepDefs in 'SampleSpamFilterStepDefs.pas',
+  TestCalculator in 'TestCalculator.pas',
+  TestSpamFilter in 'TestSpamFilter.pas',
   DelphiSpec.DUnitX in '..\Source\DelphiSpec.DUnitX.pas';
 
 var

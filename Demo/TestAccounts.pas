@@ -1,4 +1,4 @@
-unit SampleAccountsStepDefs;
+unit TestAccounts;
 
 interface
 
@@ -33,7 +33,7 @@ uses
 , DelphiSpec.Parser
 , DelphiSpec.Attributes;
 
-{$I accountsTest.inc}
+{$I TestAccounts.inc}
 
 { TAccountsTestContext }
 

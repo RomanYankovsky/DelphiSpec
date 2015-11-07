@@ -1,4 +1,4 @@
-unit SampleSpamFilterStepDefs;
+unit TestSpamFilter;
 
 interface
 
@@ -21,7 +21,7 @@ uses
 , DelphiSpec.Parser
 , DelphiSpec.Attributes;
 
-{$I spamfilterTest.inc}
+{$I TestSpamFilter.inc}
 
 { TSpamFilterTest }
 

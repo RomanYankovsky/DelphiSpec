@@ -2,7 +2,7 @@
 
 type
   [Feature('Spam Filter')]
-  TspamfilterTest = class(TspamfilterTestContext)
+  TSpamFilterTest = class(TSpamFilterTestContext)
   public
     [Given_('I have a blacklist:')]
     procedure Given_I_have_a_blacklist(const text: String);
@@ -13,7 +13,7 @@ type
   end;
 
 const
-  spamfilterSource: String = (
+  SpamFilterSource: String = (
 'Feature: Spam Filter'#13#10 +
 ''#13#10 +
 'Scenario: Blacklist'#13#10 +
@@ -27,8 +27,8 @@ const
 '  Then my inbox is empty'#13#10
 );
 
-procedure RegisterspamfilterTest;
+procedure RegisterSpamFilterTest;
 begin
-  RegisterStepDefinitionsClass(TspamfilterTest);
-  TDelphiSpecParser.RegisterClass('spamfilter', 'EN', spamfilterSource);
+  RegisterStepDefinitionsClass(TSpamFilterTest);
+  TDelphiSpecParser.RegisterClass('SpamFilter', 'EN', SpamFilterSource);
 end;

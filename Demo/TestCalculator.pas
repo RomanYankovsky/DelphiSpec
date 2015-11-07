@@ -1,4 +1,4 @@
-unit SampleCalculatorStepDefs;
+unit TestCalculator;
 
 interface
 
@@ -24,7 +24,7 @@ uses
 , DelphiSpec.Parser
 , DelphiSpec.Attributes;
 
-{$I calculatorTest.inc}
+{$I TestCalculator.inc}
 
 { TCalculatorTest }
 

@@ -60,8 +60,8 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <PostBuildEvent><![CDATA["$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe" "$(PROJECTDIR)\Features" "$(PROJECTDIR)"
-$(PostBuildEvent)]]></PostBuildEvent>
+        <PreBuildEvent><![CDATA["$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe" "$(PROJECTDIR)\Features" "$(PROJECTDIR)"
+$(PreBuildEvent)]]></PreBuildEvent>
         <DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
         <Icns_MainIcns>$(BDS)\bin\delphi_PROJECTICNS.icns</Icns_MainIcns>
         <SanitizedProjectName>DelphiSpecDUnitXDemo</SanitizedProjectName>
@@ -182,10 +182,10 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="SampleAccountsStepDefs.pas"/>
+        <DCCReference Include="TestAccounts.pas"/>
         <DCCReference Include="SampleCalculator.pas"/>
-        <DCCReference Include="SampleCalculatorStepDefs.pas"/>
-        <DCCReference Include="SampleSpamFilterStepDefs.pas"/>
+        <DCCReference Include="TestCalculator.pas"/>
+        <DCCReference Include="TestSpamFilter.pas"/>
         <DCCReference Include="..\Source\DelphiSpec.DUnitX.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
@@ -257,7 +257,16 @@ $(PostBuildEvent)]]></PostBuildEvent>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployClass Name="ProjectiOSDeviceResourceRules"/>
+                <DeployClass Name="DependencyModule">
+                    <Platform Name="Win32">
+                        <Operation>0</Operation>
+                        <Extensions>.dll;.bpl</Extensions>
+                    </Platform>
+                    <Platform Name="OSX32">
+                        <Operation>1</Operation>
+                        <Extensions>.dylib</Extensions>
+                    </Platform>
+                </DeployClass>
                 <DeployClass Name="ProjectOSXResource">
                     <Platform Name="OSX32">
                         <RemoteDir>Contents\Resources</RemoteDir>
@@ -571,16 +580,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
                         <Operation>1</Operation>
                     </Platform>
                 </DeployClass>
-                <DeployClass Name="DependencyModule">
-                    <Platform Name="Win32">
-                        <Operation>0</Operation>
-                        <Extensions>.dll;.bpl</Extensions>
-                    </Platform>
-                    <Platform Name="OSX32">
-                        <Operation>1</Operation>
-                        <Extensions>.dylib</Extensions>
-                    </Platform>
-                </DeployClass>
+                <DeployClass Name="ProjectiOSDeviceResourceRules"/>
                 <ProjectRoot Platform="iOSDevice64" Name="$(PROJECTNAME).app"/>
                 <ProjectRoot Platform="Win64" Name="$(PROJECTNAME)"/>
                 <ProjectRoot Platform="iOSDevice32" Name="$(PROJECTNAME).app"/>
@@ -605,115 +605,115 @@ $(PostBuildEvent)]]></PostBuildEvent>
     <Import Condition="Exists('$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj')" Project="$(APPDATA)\Embarcadero\$(BDSAPPDATABASEDIR)\$(PRODUCTVERSION)\UserTools.proj"/>
     <Import Project="$(MSBuildProjectName).deployproj" Condition="Exists('$(MSBuildProjectName).deployproj')"/>
     <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='Android'">
-        <PreBuildEvent/>
+        <PreBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PostBuildEvent>
+        <PostBuildEvent/>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='iOSDevice32'">
-        <PreBuildEvent/>
+        <PreBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PostBuildEvent>
+        <PostBuildEvent/>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='iOSDevice64'">
-        <PreBuildEvent/>
+        <PreBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PostBuildEvent>
+        <PostBuildEvent/>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='iOSSimulator'">
-        <PreBuildEvent/>
+        <PreBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PostBuildEvent>
+        <PostBuildEvent/>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='OSX32'">
-        <PreBuildEvent/>
+        <PreBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PostBuildEvent>
+        <PostBuildEvent/>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='Win32'">
-        <PreBuildEvent/>
+        <PreBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PostBuildEvent>
+        <PostBuildEvent/>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Debug' And '$(Platform)'=='Win64'">
-        <PreBuildEvent/>
+        <PreBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PostBuildEvent>
+        <PostBuildEvent/>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='Android'">
-        <PreBuildEvent/>
+        <PreBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PostBuildEvent>
+        <PostBuildEvent/>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='iOSDevice32'">
-        <PreBuildEvent/>
+        <PreBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PostBuildEvent>
+        <PostBuildEvent/>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='iOSDevice64'">
-        <PreBuildEvent/>
+        <PreBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PostBuildEvent>
+        <PostBuildEvent/>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='iOSSimulator'">
-        <PreBuildEvent/>
+        <PreBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PostBuildEvent>
+        <PostBuildEvent/>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='OSX32'">
-        <PreBuildEvent/>
+        <PreBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PostBuildEvent>
+        <PostBuildEvent/>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='Win32'">
-        <PreBuildEvent/>
+        <PreBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PostBuildEvent>
+        <PostBuildEvent/>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(Platform)'=='Win64'">
-        <PreBuildEvent/>
+        <PreBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\Win32\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PreBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>&quot;$(PROJECTDIR)\..\FeatureCompile\$(Platform)\$(Config)\FeatureCompile.exe&quot; &quot;$(PROJECTDIR)\Features&quot; &quot;$(PROJECTDIR)&quot;</PostBuildEvent>
+        <PostBuildEvent/>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
 </Project>

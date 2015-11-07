@@ -2,7 +2,7 @@
 
 type
   [Feature('Accounts')]
-  TaccountsTest = class(TaccountsTestContext)
+  TAccountsTest = class(TAccountsTestContext)
   public type
     t_data = record
       id: Integer;
@@ -24,7 +24,7 @@ type
   end;
 
 const
-  accountsSource: String = (
+  AccountsSource: String = (
 'Feature: Accounts'#13#10 +
 ''#13#10 +
 'Background:'#13#10 +
@@ -53,8 +53,8 @@ const
 '  Then access denied'#13#10
 );
 
-procedure RegisteraccountsTest;
+procedure RegisterAccountsTest;
 begin
-  RegisterStepDefinitionsClass(TaccountsTest);
-  TDelphiSpecParser.RegisterClass('accounts', 'EN', accountsSource);
+  RegisterStepDefinitionsClass(TAccountsTest);
+  TDelphiSpecParser.RegisterClass('Accounts', 'EN', AccountsSource);
 end;
