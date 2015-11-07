@@ -64,7 +64,6 @@ var
 
   FeatureFixture: ITestFixture;
   OutlineFixture: ITestFixture;
-  ScenarioFixture: ITestFixture;
 
   procedure BuildTests(const ParentFixture: ITestFixture; const Scenarios: TScenarioList);
   var
