@@ -574,8 +574,10 @@ begin
   end;
 end;
 
-procedure GenerateFeatureTestClassContents(
-  AStepDefinitions: TObjectList<TStepDef>; AOutput: TStringList);
+procedure GenerateFeatureTestClassContents(const AClassName: String;
+  AStepDefinitions: TObjectList<TStepDef>;
+  AOutput: TStringList;
+  ADummyImplementationOutput: TStringList);
 var
   LStepDef: TStepDef;
   LSectionStarted: Boolean;
@@ -585,6 +587,8 @@ var
   LParamStr, LAttributeLine: String;
   LPrefixed: Boolean;
 begin
+  ADummyImplementationOutput.Clear;
+
   LTypeNames := TList<String>.Create;
   LFieldNames := TList<String>.Create;
   try
@@ -644,6 +648,13 @@ begin
 
       AOutput.Add(Format('    procedure %s%s%s;',
         [LStepDef.Prefix, LStepDef.ProcedureLine, LParamStr]));
+
+      ADummyImplementationOutput.Add(Format('procedure T%sTest.%s%s%s;',
+        [AClassName, LStepDef.Prefix, LStepDef.ProcedureLine, LParamStr]));
+      ADummyImplementationOutput.Add('begin');
+      ADummyImplementationOutput.Add('  Assert.Fail(''Write a test'');');
+      ADummyImplementationOutput.Add('end;');
+      ADummyImplementationOutput.Add('');
     end;
 
   finally
@@ -655,7 +666,7 @@ end;
 procedure CompileFeatures(const AOutputPath, ALangCode: String; AFeatures: TFeatureList);
 var
   LFeature: TFeature;
-  LOutput: TStringList;
+  LOutput, LDummyImplementation: TStringList;
   LStepDefinitions: TObjectList<TStepDef>;
   LScenario: TScenario;
   LScenarioOutline: TScenarioOutline;
@@ -664,6 +675,7 @@ var
 begin
   ForceDirectories(AOutputPath);
   LOutput := TStringList.Create;
+  LDummyImplementation := TStringList.Create;
   try
     for LFeature in AFeatures do
     begin
@@ -692,48 +704,112 @@ begin
             LScenarioOutline.Examples, LStepDefinitions);
         end;
 
-        GenerateFeatureTestClassContents(LStepDefinitions, LOutput);
+        GenerateFeatureTestClassContents(LFeature.FeatureClassName,
+          LStepDefinitions, LOutput, LDummyImplementation);
+
+        LOutput.Add('  end;');
+        LOutput.Add('');
+        LOutput.Add('const');
+        LOutput.Add(Format('  %sSource: String = (', [LFeature.FeatureClassName]));
+
+        LHigh := LFeature.Source.Count - 1;
+        for I := 0 to LHigh do
+        begin
+          LString := '''' + LFeature.Source[I].Replace('''', '''''') + '''#13#10';
+          if I < LHigh then
+           LString := LString + ' +';
+
+          LOutput.Add(LString);
+        end;
+        LOutput.Add(');');
+        LOutput.Add('');
+        LOutput.Add(Format('procedure Register%sTest;', [ LFeature.FeatureClassName ]));
+        LOutput.Add('begin');
+        LOutput.Add(Format('  RegisterStepDefinitionsClass(T%sTest);',
+          [LFeature.FeatureClassName]));
+        LOutput.Add(
+          Format('  TDelphiSpecParser.RegisterClass(''%s'', ''%s'', %sSource);',
+          [ LFeature.FeatureClassName, ALangCode, LFeature.FeatureClassName ]));
+        LOutput.Add('end;');
+
+        LOutputFileName := Format('%s\Test%s.inc',
+          [AOutputPath, LFeature.FeatureClassName]);
+        LOutput.SaveToFile(LOutputFileName, TEncoding.UTF8);
+
+        Writeln(LOutputFileName);
+
+        LOutput.Clear;
+
+        LOutputFileName := Format('%s\Test%s.pas',
+          [AOutputPath, LFeature.FeatureClassName]);
+
+        if not FileExists(LOutputFileName) then
+        begin
+          LOutput.Add(Format('unit Test%s;', [LFeature.FeatureClassName]));
+          LOutput.Add('');
+          LOutput.Add('interface');
+          LOutput.Add('');
+          LOutput.Add('uses');
+          LOutput.Add('  System.SysUtils');
+          LOutput.Add(', Generics.Collections');
+          LOutput.Add(', DelphiSpec.StepDefinitions;');
+          LOutput.Add('');
+          LOutput.Add('type');
+          LOutput.Add(Format('  T%sTestContext = class(TStepDefinitions)',
+            [LFeature.FeatureClassName]));
+          LOutput.Add('  public');
+          LOutput.Add('    procedure SetUp; override;');
+          LOutput.Add('    procedure TearDown; override;');
+          LOutput.Add('  end;');
+          LOutput.Add('');
+          LOutput.Add('implementation');
+          LOutput.Add('');
+          LOutput.Add('uses');
+          LOutput.Add('  DelphiSpec.Core');
+          LOutput.Add(', DelphiSpec.Assert');
+          LOutput.Add(', DelphiSpec.Attributes');
+          LOutput.Add(', DelphiSpec.Parser;');
+          LOutput.Add('');
+          LOutput.Add(Format('{$I Test%s.inc}', [LFeature.FeatureClassName]));
+          LOutput.Add('');
+          LOutput.Add(Format('{ T%sTestContext }', [LFeature.FeatureClassName]));
+          LOutput.Add('');
+          LOutput.Add(Format('procedure T%sTestContext.SetUp;', [LFeature.FeatureClassName]));
+          LOutput.Add('begin');
+          LOutput.Add('  // TODO: SetUp');
+          LOutput.Add('end;');
+          LOutput.Add('');
+          LOutput.Add(Format('procedure T%sTestContext.TearDown;', [LFeature.FeatureClassName]));
+          LOutput.Add('begin');
+          LOutput.Add('  // TODO: TearDown');
+          LOutput.Add('end;');
+          LOutput.Add('');
+          LOutput.Add(Format('{ T%sTest }', [LFeature.FeatureClassName]));
+          LOutput.Add('');
+          for I := 0 to LDummyImplementation.Count - 1 do
+          begin
+            LOutput.Add(LDummyImplementation[I]);
+          end;
+
+          LOutput.Add('initialization');
+          LOutput.Add(Format('  Register%sTest;', [LFeature.FeatureClassName]));
+          LOutput.Add('end.');
+
+          LOutput.SaveToFile(LOutputFileName, TEncoding.UTF8);
+
+          Writeln(LOutputFileName);
+        end;
+
 
       finally
         LStepDefinitions.Free;
       end;
 
-      LOutput.Add('  end;');
-      LOutput.Add('');
-      LOutput.Add('const');
-      LOutput.Add(Format('  %sSource: String = (', [LFeature.FeatureClassName]));
-
-      LHigh := LFeature.Source.Count - 1;
-      for I := 0 to LHigh do
-      begin
-        LString := '''' + LFeature.Source[I].Replace('''', '''''') + '''#13#10';
-        if I < LHigh then
-         LString := LString + ' +';
-
-        LOutput.Add(LString);
-      end;
-      LOutput.Add(');');
-
-      LOutput.Add('');
-
-      LOutput.Add(Format('procedure Register%sTest;', [ LFeature.FeatureClassName ]));
-      LOutput.Add('begin');
-      LOutput.Add(Format('  RegisterStepDefinitionsClass(T%sTest);',
-        [LFeature.FeatureClassName]));
-      LOutput.Add(
-        Format('  TDelphiSpecParser.RegisterClass(''%s'', ''%s'', %sSource);',
-        [ LFeature.FeatureClassName, ALangCode, LFeature.FeatureClassName ]));
-      LOutput.Add('end;');
-
-      LOutputFileName := Format('%s\%sTest.inc',
-        [AOutputPath, LFeature.FeatureClassName]);
-      LOutput.SaveToFile(LOutputFileName, TEncoding.UTF8);
-      Writeln(LOutputFileName);
-
       LOutput.Clear;
     end;
 
   finally
+    LDummyImplementation.Free;
     LOutput.Free;
   end;
 end;
