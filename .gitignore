@@ -57,3 +57,5 @@ dunit.ini
 # DUnitX files #
 ###############
 dunitx-results.xml
+*.local
+*.stat

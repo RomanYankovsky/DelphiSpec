@@ -20,15 +20,19 @@ type
   TFeature = class
   private
     FName: string;
+    FSource: TStringList;
+    FClassName: String;
     FBackground: TScenario;
     FScenarios: TScenarioList;
     FScenarioOutlines: TScenarioOutlineList;
     FStepDefsClass: TStepDefinitionsClass;
   public
-    constructor Create(const Name: string; StepDefsClass: TStepDefinitionsClass); reintroduce;
+    constructor Create(const Name, ClassName: string; StepDefsClass: TStepDefinitionsClass); reintroduce;
     destructor Destroy; override;
 
+    property Source: TStringList read FSource;
     property Background: TScenario read FBackground write FBackground;
+    property FeatureClassName: String read FClassName;
     property Name: string read FName;
     property Scenarios: TScenarioList read FScenarios;
     property ScenarioOutlines: TScenarioOutlineList read FScenarioOutlines;
@@ -37,7 +41,7 @@ type
 
   EScenarioStepException = class(Exception);
   TScenario = class
-  protected type
+  public type
     TStep = class
     strict private
       FValue: string;
@@ -78,6 +82,9 @@ type
 
     procedure Execute(StepDefs: TStepDefinitions);
 
+    property GivenSteps: TStepList read FGiven;
+    property WhenSteps: TStepList read FWhen;
+    property ThenSteps: TStepList read FThen;
     property Feature: TFeature read FFeature;
     property Name: string read FName;
   end;
@@ -95,6 +102,7 @@ type
 
     procedure SetExamples(Examples: IDataTable);
 
+    property Examples: IDataTable read FExamples;
     property Scenarios: TScenarioList read GetScenarios;
   end;
 
@@ -105,10 +113,12 @@ uses
 
 { TFeature }
 
-constructor TFeature.Create(const Name: string; StepDefsClass: TStepDefinitionsClass);
+constructor TFeature.Create(const Name, ClassName: string; StepDefsClass: TStepDefinitionsClass);
 begin
   inherited Create;
+  FSource := TStringList.Create;
   FName := Name;
+  FClassName := ClassName;
   FBackground := nil;
   FScenarios := TScenarioList.Create(True);
   FScenarioOutlines := TScenarioOutlineList.Create(True);
@@ -117,6 +127,7 @@ end;
 
 destructor TFeature.Destroy;
 begin
+  FSource.Free;
   FreeAndNil(FBackground);
   FScenarioOutlines.Free;
   FScenarios.Free;

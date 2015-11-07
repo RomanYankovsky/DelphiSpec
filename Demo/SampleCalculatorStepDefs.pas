@@ -3,74 +3,66 @@ unit SampleCalculatorStepDefs;
 interface
 
 uses
-  SampleCalculator, DelphiSpec.Attributes, DelphiSpec.StepDefinitions;
+  SampleCalculator
+, DelphiSpec.StepDefinitions;
 
 type
-  [Feature('calculator')]
-  TSampleCalculatorSteps = class(TStepDefinitions)
+  TCalculatorTestContext = class(TStepDefinitions)
   private
     FCalc: TCalculator;
   public
     procedure SetUp; override;
     procedure TearDown; override;
-
-//    [Given_('I have entered (.*) in calculator')]
-//    [Given_('I have entered $value in calculator')]
-//    [Given_]
-    procedure Given_I_have_entered_value_in_calculator(Value: Integer);
-
-//    [When_('I press Add')]
-//    [When_]
-    procedure When_I_press_add;
-
-//    [When_('I press Mul')]
-//    [When_]
-    procedure When_I_press_mul;
-
-//    [Then_('the result should be (.*) on the screen')]
-//    [Then_('the result should be $value on the screen')]
-//    [Then_]
-    procedure Then_the_result_should_be_value_on_the_screen(Value: Integer);
   end;
 
 implementation
 
 uses
-  SysUtils, DelphiSpec.Core, DelphiSpec.Assert;
+  System.SysUtils
+, DelphiSpec.Core
+, DelphiSpec.Assert
+, DelphiSpec.Parser
+, DelphiSpec.Attributes;
 
-{ TSampleCalculatorSteps }
+{$I calculatorTest.inc}
 
-procedure TSampleCalculatorSteps.When_I_press_add;
+{ TCalculatorTest }
+
+procedure TCalculatorTest.Given_I_have_entered_value_in_calculator(
+  const value: Integer);
+begin
+  FCalc.Push(value);
+end;
+
+procedure TCalculatorTest.Then_the_result_should_be_value_on_the_screen(
+  const value: Integer);
+begin
+  Assert.AreEqual(Int64(Value), FCalc.Value,
+    'Incorrect result on calculator screen');
+end;
+
+procedure TCalculatorTest.When_I_press_Add;
 begin
   FCalc.Add;
 end;
 
-procedure TSampleCalculatorSteps.Given_I_have_entered_value_in_calculator(Value: Integer);
-begin
-  FCalc.Push(Value);
-end;
-
-procedure TSampleCalculatorSteps.When_I_press_mul;
+procedure TCalculatorTest.When_I_press_mul;
 begin
   FCalc.Mul;
 end;
 
-procedure TSampleCalculatorSteps.SetUp;
+{ TCalculatorTestContext }
+
+procedure TCalculatorTestContext.SetUp;
 begin
   FCalc := TCalculator.Create;
 end;
 
-procedure TSampleCalculatorSteps.TearDown;
+procedure TCalculatorTestContext.TearDown;
 begin
   FCalc.Free;
 end;
 
-procedure TSampleCalculatorSteps.Then_the_result_should_be_value_on_the_screen(Value: Integer);
-begin
-  Assert.AreEqual(Value, FCalc.Value, 'Incorrect result on calculator screen');
-end;
-
 initialization
-  RegisterStepDefinitionsClass(TSampleCalculatorSteps);
-
+  RegisterCalculatorTest;
 end.
