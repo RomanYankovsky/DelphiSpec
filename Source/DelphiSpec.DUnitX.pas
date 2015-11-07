@@ -76,13 +76,12 @@ var
     for Scenario in Scenarios do
     begin
        FixtureInstance := TDUnitXScenario.Create(Scenario);
-       ScenarioFixture := parentFixture.AddChildFixture(FixtureInstance, Scenario.Name, '');
 
        Method.Data := FixtureInstance;
        Method.Code := @TDUnitXScenario.Execute;
 
        TestMethod := TTestMethod(Method);
-       ScenarioFixture.AddTest('', TestMethod, Scenario.Name, '');
+       ParentFixture.AddTest('', TestMethod, Scenario.Name, '');
     end;
   end;
 
