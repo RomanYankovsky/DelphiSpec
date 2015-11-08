@@ -1,61 +1,29 @@
 program DelphiSpecDUnitXDemo;
 
-{$APPTYPE CONSOLE}
-
 uses
-  SysUtils,
-  Classes,
-  DelphiSpec.Core,
-  DelphiSpec.Scenario,
+  FMX.Forms,
   DelphiSpec.Parser,
-  Generics.Collections,
-  DUnitX.AutoDetect.Console,
-  DUnitX.Loggers.Console,
-  DUnitX.Loggers.Xml.NUnit,
-  DUnitX.TestRunner,
-  DUnitX.TestFramework,
+  DelphiSpec.DUnitX,
+  {$IF Defined(MSWINDOWS) or (Defined(MACOS) and not Defined(IOS))}
+  DUnitX.Loggers.GUIX,
+  {$ELSE}
+  DUnitX.Loggers.MobileGUI,
+  {$ENDIF }
   TestAccounts in 'TestAccounts.pas',
   SampleCalculator in 'SampleCalculator.pas',
   TestCalculator in 'TestCalculator.pas',
-  TestSpamFilter in 'TestSpamFilter.pas',
-  DelphiSpec.DUnitX in '..\Source\DelphiSpec.DUnitX.pas';
+  TestSpamFilter in 'TestSpamFilter.pas';
 
-var
-  runner : ITestRunner;
-  results : IRunResults;
-  logger : ITestLogger;
-  nunitLogger : ITestLogger;
+{$R *.res}
+
 begin
-  ReportMemoryLeaksOnShutdown := True;
+  RegisterFeaturesWithDUnitX('DunitXDemo', TDelphiSpecParser.GetFeatures);
 
-  try
-    RegisterFeaturesWithDUnitX('DunitXDemo', TDelphiSpecParser.GetFeatures);
-    //Create the runner
-    runner := TDUnitX.CreateRunner;
-    runner.UseRTTI := True;
-    //tell the runner how we will log things
-    logger := TDUnitXConsoleLogger.Create(false);
-    nunitLogger := TDUnitXXMLNUnitFileLogger.Create;
-    runner.AddLogger(logger);
-    runner.AddLogger(nunitLogger);
-
-    //Run tests
-    results := runner.Execute;
-
-    {$IFNDEF CI}
-      //We don't want this happening when running under CI.
-      System.Write('Done.. press <Enter> key to quit.');
-      System.Readln;
-    {$ENDIF}
-  except
-    on E: Exception do
-    begin
-      System.Writeln(E.ClassName, ': ', E.Message);
-      {$IFNDEF CI}
-        //We don't want this happening when running under CI.
-        System.Write('Done.. press <Enter> key to quit.');
-        System.Readln;
-      {$ENDIF}
-    end;
-  end;
+  Application.Initialize;
+{$IF Defined(MSWINDOWS) or (Defined(MACOS) and not Defined(IOS))}
+  Application.CreateForm(TGUIXTestRunner, GUIXTestRunner);
+{$ELSE}
+  Application.CreateForm(TMobileGUITestRunner, MobileGUITestRunner);
+  {$ENDIF}
+  Application.Run;
 end.

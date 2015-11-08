@@ -42,7 +42,9 @@ Thumbs.db
 *.dproj.local
 *.identcache
 __history
-Win32
+**/Debug/
+**/Release/
+*.deployproj
 *.res
 *.dsk
 *.~*

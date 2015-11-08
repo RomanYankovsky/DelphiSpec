@@ -10,7 +10,7 @@
             <Dependencies>FeatureCompile\FeatureCompile.dproj</Dependencies>
         </Projects>
         <Projects Include="Demo\DelphiSpecDUnitXDemo.dproj">
-            <Dependencies>FeatureCompile\FeatureCompile.dproj</Dependencies>
+            <Dependencies/>
         </Projects>
     </ItemGroup>
     <ProjectExtensions>
@@ -38,13 +38,13 @@
     <Target Name="DelphiSpecDemo:Make" DependsOnTargets="FeatureCompile:Make">
         <MSBuild Projects="Demo\DelphiSpecDemo.dproj" Targets="Make"/>
     </Target>
-    <Target Name="DelphiSpecDUnitXDemo" DependsOnTargets="FeatureCompile">
+    <Target Name="DelphiSpecDUnitXDemo">
         <MSBuild Projects="Demo\DelphiSpecDUnitXDemo.dproj"/>
     </Target>
-    <Target Name="DelphiSpecDUnitXDemo:Clean" DependsOnTargets="FeatureCompile:Clean">
+    <Target Name="DelphiSpecDUnitXDemo:Clean">
         <MSBuild Projects="Demo\DelphiSpecDUnitXDemo.dproj" Targets="Clean"/>
     </Target>
-    <Target Name="DelphiSpecDUnitXDemo:Make" DependsOnTargets="FeatureCompile:Make">
+    <Target Name="DelphiSpecDUnitXDemo:Make">
         <MSBuild Projects="Demo\DelphiSpecDUnitXDemo.dproj" Targets="Make"/>
     </Target>
     <Target Name="Build">
