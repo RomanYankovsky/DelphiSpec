@@ -370,6 +370,7 @@ function TScenario.PrepareStep(const Step: string; AttributeClass: TDelphiSpecSt
 var
   I: Integer;
   Prefix: string;
+  ParamName: String;
 begin
   Result := Step;
   if Result = '' then
@@ -380,7 +381,12 @@ begin
       Result := RightStr(MethodName, Length(MethodName) - Length(Prefix));
       Result := ReplaceStr(Result, '_', ' ');
       for I := 0 to High(Params) do
-        Result := TRegEx.Replace(Result, '\b' + Params[I].Name + '\b', '$' + Params[I].Name, [TRegExOption.roIgnoreCase]);
+      begin
+        ParamName := ReplaceStr(Params[I].Name, '_', ' ');
+        Result := TRegEx.Replace(Result,
+          '\b' + ParamName + '\b', '$' + Params[I].Name,
+          [TRegExOption.roIgnoreCase]);
+      end;
     end;
   end;
   Result := TRegEx.Replace(Result, '(\$[a-zA-Z0-9_]*)', '(.*)');
