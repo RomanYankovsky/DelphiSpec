@@ -3,7 +3,7 @@ unit DelphiSpec.Parser;
 interface
 
 uses
-  SysUtils, Classes, Generics.Collections, XmlIntf, DelphiSpec.DataTable,
+  System.SysUtils, System.Classes, Generics.Collections, XmlIntf, DelphiSpec.DataTable,
   DelphiSpec.Scenario, DelphiSpec.StepDefinitions;
 
 type
@@ -515,7 +515,7 @@ begin
 
   FLangXML := NewXmlDocument;
 
-  LXML[Utf8ToUnicode(LXML, SizeOf(LXML), PAnsiChar(@DelphiSpecI18n), SizeOf(DelphiSpecI18n))] := #0;
+  LXML[Utf8ToUnicode(LXML, SizeOf(LXML), Pointer(@DelphiSpecI18n), SizeOf(DelphiSpecI18n))] := #0;
   FLangXML.LoadFromXML(PWideChar(@LXML));
 end;
 

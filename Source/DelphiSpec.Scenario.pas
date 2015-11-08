@@ -41,6 +41,8 @@ type
 
   EScenarioStepException = class(Exception);
   TScenario = class
+  private
+    FUserObject: TObject;
   public type
     TStep = class
     strict private
@@ -68,6 +70,7 @@ type
       RttiMethod: TRttiMethod; const Value: string): Boolean;
     function PrepareStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass;
       const MethodName: string; const Params: TArray<TRttiParameter>): string;
+    procedure SetUserObject(Value: TObject);
   protected
     FGiven: TStepList;
     FWhen: TStepList;
@@ -87,6 +90,7 @@ type
     property ThenSteps: TStepList read FThen;
     property Feature: TFeature read FFeature;
     property Name: string read FName;
+    property UserObject: TObject read FUserObject write SetUserObject;
   end;
 
   TScenarioOutline = class(TScenario)
@@ -271,6 +275,7 @@ end;
 
 destructor TScenario.Destroy;
 begin
+  FUserObject.Free;
   FGiven.Free;
   FWhen.Free;
   FThen.Free;
@@ -379,6 +384,12 @@ begin
     end;
   end;
   Result := TRegEx.Replace(Result, '(\$[a-zA-Z0-9_]*)', '(.*)');
+end;
+
+procedure TScenario.SetUserObject(Value: TObject);
+begin
+  FreeAndNil(FUserObject);
+  FUserObject := Value;
 end;
 
 { TScenarioOutline }
