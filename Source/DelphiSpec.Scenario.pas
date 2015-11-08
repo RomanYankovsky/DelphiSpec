@@ -254,13 +254,34 @@ function TScenario.ConvertDataTable(DataTable: IDataTable;
       DynArraySetLength(PPointer(Result[I].GetReferenceToRawData)^, Result[I].TypeInfo, 1, @ArrayLength);
       for J := 0 to DataTable.RowCount - 1 do
         Result[I].SetArrayElement(J,
-          ConvertParamValue(DataTable.Values[J, I], (ElementType as TRttiDynamicArrayType).ElementType));
+          ConvertParamValue(DataTable.Values[I, J], (ElementType as TRttiDynamicArrayType).ElementType));
+    end;
+  end;
+
+  function ConvertDataTableToArray(DataTable: IDataTable;
+    ElementType: TRttiType): TValueArray;
+  var
+    I, J, K: Integer;
+    ArrayLength: Integer;
+  begin
+    ArrayLength := DataTable.RowCount * DataTable.ColCount;
+    SetLength(Result, ArrayLength);
+
+    K := 0;
+    for I := 0 to DataTable.ColCount - 1 do
+    begin
+      for J := 0 to DataTable.RowCount - 1 do
+      begin
+        Result[K] := ConvertParamValue(DataTable.Values[I, J], ElementType);
+        Inc(K);
+      end;
     end;
   end;
 
 var
   Values: TValueArray;
   ElementType: TRttiType;
+  LTypeId: Integer;
 begin
   ElementType := (ParamType as TRttiDynamicArrayType).ElementType;
   case ElementType.TypeKind of
@@ -268,6 +289,8 @@ begin
       Values := ConvertDataTableToArrayOfRecords(DataTable, ElementType);
     TTypeKind.tkDynArray:
       Values := ConvertDataTableToTwoDimArray(DataTable, ElementType);
+    else
+      Values := ConvertDataTableToArray(DataTable, ElementType);
   end;
 
   Result := TValue.FromArray(ParamType.Handle, Values);
