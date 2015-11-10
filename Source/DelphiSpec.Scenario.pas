@@ -281,7 +281,6 @@ function TScenario.ConvertDataTable(DataTable: IDataTable;
 var
   Values: TValueArray;
   ElementType: TRttiType;
-  LTypeId: Integer;
 begin
   ElementType := (ParamType as TRttiDynamicArrayType).ElementType;
   case ElementType.TypeKind of
@@ -450,7 +449,7 @@ end;
 
 procedure TScenarioOutline.PrepareScenarios;
 
-  function PutValues(const Step: string; Index: Integer): string;
+  function PutValues(const Step: string; Index: Integer): string; overload;
   var
     I: Integer;
   begin
@@ -459,6 +458,30 @@ procedure TScenarioOutline.PrepareScenarios;
     for I := 0 to FExamples.ColCount - 1 do
       Result := TRegEx.Replace(Result, '<' + FExamples.Values[I, 0] + '>',
         FExamples.Values[I, Index], [TRegExOption.roIgnoreCase]);
+  end;
+
+  function PutValues(const DataTable: IDataTable; Index: Integer): IDataTable; overload;
+  var
+    Row, Column: Integer;
+    Data: TStringDynArray;
+    NewTable: TDataTable;
+  begin
+    Result := nil;
+    if Assigned(DataTable) then
+    begin
+      NewTable := TDataTable.Create(DataTable.ColCount);
+      SetLength(Data, DataTable.ColCount);
+
+      for Row := 0 to DataTable.RowCount - 1 do
+      begin
+        for Column := 0 to DataTable.ColCount - 1 do
+          Data[Column] := PutValues(DataTable.Values[Column, Row], Index);
+
+        NewTable.AddRow(Data);
+      end;
+
+      Result := NewTable;
+    end;
   end;
 
 var
@@ -471,13 +494,16 @@ begin
     Scenario := TScenario.Create(Feature, Name + Format(' [case %d]', [I]));
 
     for Step in FGiven do
-      Scenario.AddGiven(PutValues(Step.Value, I), Step.DataTable, PutValues(Step.PyString, I));
+      Scenario.AddGiven(PutValues(Step.Value, I),
+        PutValues(Step.DataTable, I), PutValues(Step.PyString, I));
 
     for Step in FWhen do
-      Scenario.AddWhen(PutValues(Step.Value, I), Step.DataTable, PutValues(Step.PyString, I));
+      Scenario.AddWhen(PutValues(Step.Value, I),
+        PutValues(Step.DataTable, I), PutValues(Step.PyString, I));
 
     for Step in FThen do
-      Scenario.AddThen(PutValues(Step.Value, I), Step.DataTable, PutValues(Step.PyString, I));
+      Scenario.AddThen(PutValues(Step.Value, I),
+        PutValues(Step.DataTable, I), PutValues(Step.PyString, I));
 
     FScenarios.Add(Scenario);
   end;
