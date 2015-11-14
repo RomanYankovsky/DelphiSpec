@@ -268,9 +268,9 @@ function TScenario.ConvertDataTable(DataTable: IDataTable;
     SetLength(Result, ArrayLength);
 
     K := 0;
-    for I := 0 to DataTable.ColCount - 1 do
+    for J := 0 to DataTable.RowCount - 1 do
     begin
-      for J := 0 to DataTable.RowCount - 1 do
+      for I := 0 to DataTable.ColCount - 1 do
       begin
         Result[K] := ConvertParamValue(DataTable.Values[I, J], ElementType);
         Inc(K);
