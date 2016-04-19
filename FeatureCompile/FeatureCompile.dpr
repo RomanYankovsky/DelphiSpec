@@ -642,7 +642,7 @@ begin
         for LAttributeLine in LStepDef.AttributeLines do
         begin
           AOutput.Add(Format('    [%s(''%s'')]',
-            [LStepDef.Prefix, LAttributeLine]));
+            [LStepDef.Prefix, LAttributeLine.Replace('''', '''''')]));
         end;
       end;
 
@@ -686,7 +686,7 @@ begin
       LOutput.Add('// AUTOMATICALLY GENERATED, DO NOT EDIT! //');
       LOutput.Add('');
       LOutput.Add('type');
-      LOutput.Add(Format('  [Feature(''%s'')]', [LFeature.Name]));
+      LOutput.Add(Format('  [Feature(''%s'')]', [LFeature.Name.Replace('''', '''''')]));
       LOutput.Add(Format('  T%sTest = class(T%sTestContext)',
         [LFeature.FeatureClassName, LFeature.FeatureClassName]));
 
