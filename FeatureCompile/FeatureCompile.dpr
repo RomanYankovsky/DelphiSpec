@@ -15,7 +15,10 @@ uses
 , DelphiSpec.DataTable
 , DelphiSpec.Parser;
 
-function ToIdentifier(const AString: String): String;
+type
+  TProgrammingFramework = (Unknown, Delphi, QtCPP);
+
+function ToIdentifier(const AString: String; APrefix: Boolean = False): String;
 var
   I: Integer;
 begin
@@ -29,6 +32,17 @@ begin
       '0'..'9': Result := Result + AString[I];
       ' ': Result := Result + '_';
     end;
+  end;
+
+  if APrefix then
+  begin
+    if Result <> '' then
+    begin
+      case Result[Low(Result)] of
+        '0'..'9': Result := '_' + Result;
+      end;
+    end else
+      Result := '_';
   end;
 end;
 
@@ -74,11 +88,25 @@ type
     ProcedureLine: String;
     Parameters: TList<TParameter>;
     UseAttribute: Boolean;
+    ExamplesDataTable: IDataTable;
 
     constructor Create;
     destructor Destroy; override;
 
     class function Find(AList: TObjectList<TStepDef>; ADef: TStepDef): Integer;
+  end;
+
+  TScenarioInfo = class
+  private
+    function GetExamples: IDataTable;
+  public
+    Scenario: TScenario;
+    Steps: TList<TStepDef>;
+
+    constructor Create(AScenario: TScenario);
+    destructor Destroy; override;
+
+    property Examples: IDataTable read GetExamples;
   end;
 
 function GetValueTypeFromDataTable(const ADataTable: IDataTable;
@@ -251,9 +279,9 @@ begin
   end;
 end;
 
-procedure GetStepDefinition(const APrefix: String;
+function GetStepDefinition(const APrefix: String;
   AStep: TScenario.TStep; const AExamplesDataTable: IDataTable;
-  AOutput: TObjectList<TStepDef>);
+  AOutput: TObjectList<TStepDef>): TStepDef;
 var
   LDef: TStepDef;
   LSplitted: TList<String>;
@@ -270,6 +298,7 @@ var
 begin
   LDef := TStepDef.Create;
   try
+    LDef.ExamplesDataTable := AExamplesDataTable;
     LDef.Prefix := APrefix;
     LSplitted := TList<String>.Create;
     try
@@ -310,7 +339,7 @@ begin
         Dec(LCount, LPos);
       end;
 
-      for I := 0 to LSplitted.Count -1 do
+      for I := 0 to LSplitted.Count - 1 do
       begin
         LString := LSplitted[I];
         if LString = ' ' then
@@ -369,7 +398,7 @@ begin
         begin
           with LParameter.RecordFields[I] do
           begin
-            Name := ToIdentifier(AStep.DataTable.GetValue(I, 0));
+            Name := ToIdentifier(AStep.DataTable.GetValue(I, 0), True);
             ValueType := GetValueTypeFromDataTable(AStep.DataTable, Flags, I);
           end;
         end;
@@ -396,37 +425,49 @@ begin
 
     LDef.AttributeLines.Add(LAttributeLine);
 
-    if TStepDef.Find(AOutput, LDef) < 0 then
+    I := TStepDef.Find(AOutput, LDef);
+    if I < 0 then
     begin
       AOutput.Add(LDef);
+      Result := LDef;
       LDef := nil;
-    end;
+    end else
+      Result := AOutput[I];
   finally
     LDef.Free;
   end;
 end;
 
 procedure GetScenarioStepDefinitions(AScenario: TScenario;
-  AExampleDataTable: IDataTable; AOutput: TObjectList<TStepDef>);
+  AOutput: TObjectList<TStepDef>;
+  AScenarioInfo: TObjectList<TScenarioInfo>);
 var
   LStep: TScenario.TStep;
+  LInfo: TScenarioInfo;
+  LExamples: IDataTable;
 begin
   if Assigned(AScenario) then
   begin
+    LInfo := TScenarioInfo.Create(AScenario);
+
+    LExamples := LInfo.Examples;
+
     for LStep in AScenario.GivenSteps do
     begin
-      GetStepDefinition('Given_', LStep, AExampleDataTable, AOutput);
+      LInfo.Steps.Add(GetStepDefinition('Given_', LStep, LExamples, AOutput));
     end;
 
     for LStep in AScenario.WhenSteps do
     begin
-      GetStepDefinition('When_', LStep, AExampleDataTable, AOutput);
+      LInfo.Steps.Add(GetStepDefinition('When_', LStep, LExamples, AOutput));
     end;
 
     for LStep in AScenario.ThenSteps do
     begin
-      GetStepDefinition('Then_', LStep, AExampleDataTable, AOutput);
+      LInfo.Steps.Add(GetStepDefinition('Then_', LStep, LExamples, AOutput));
     end;
+
+    AScenarioInfo.Add(LInfo);
   end;
 end;
 
@@ -502,7 +543,7 @@ begin
   ANames.Add(Result);
 end;
 
-function GetTypeName(const AParameter: TParameter): String;
+function GetTypeNameDelphi(const AParameter: TParameter): String;
 begin
   case AParameter.ValueType of
     vtRecord:
@@ -532,7 +573,37 @@ begin
     Result := 'TArray<' + Result + '>';
 end;
 
-function ParametersToString(AParameters: TList<TParameter>;
+function GetTypeNameQtCPP(const AParameter: TParameter): String;
+begin
+  case AParameter.ValueType of
+    vtRecord:
+    begin
+      Result := AParameter.TypeName;
+    end;
+    vtNumber:
+    begin
+      if pfFloat in AParameter.Flags then
+        Result := 'qreal'
+      else if (pfBig in AParameter.Flags) then
+        Result := 'qint64'
+      else
+        Result := 'int';
+    end;
+    vtString:
+    begin
+      Result := 'QString';
+    end;
+    else
+    begin
+      raise Exception.Create('Unknown  value type');
+    end;
+  end;
+
+  if pfArray in AParameter.Flags then
+    Result := 'QList<' + Result + '>';
+end;
+
+function ParametersToStringDelphi(AParameters: TList<TParameter>;
   out APrefixedParam: Boolean): String;
 var
   LNames: TList<String>;
@@ -559,7 +630,7 @@ begin
           end;
         end;
         LParamStr := Format('const %s: %s',
-          [LName, GetTypeName(LParameter)]);
+          [LName, GetTypeNameDelphi(LParameter)]);
 
         if Result <> '' then
           Result := Result + '; ' + LParamStr
@@ -574,17 +645,296 @@ begin
   end;
 end;
 
-procedure GenerateFeatureTestClassContents(const AClassName: String;
-  AStepDefinitions: TObjectList<TStepDef>;
-  AOutput: TStringList;
-  ADummyImplementationOutput: TStringList);
+function ParametersToStringQtCPP(AParameters: TList<TParameter>;
+  out APrefixedParam: Boolean): String;
 var
+  LNames: TList<String>;
+  LParameter: TParameter;
+  LParamStr, LName: String;
+begin
+  APrefixedParam := False;
+  Result := '';
+  if AParameters.Count > 0 then
+  begin
+    LNames := TList<String>.Create;
+    try
+      for LParameter in AParameters do
+      begin
+        LName := RegisterParameterName(LNames, LParameter);
+        if LName <> '' then
+        begin
+          case LName[Low(LName)] of
+            '0'..'9':
+            begin
+              LName := '_' + LName;
+              APrefixedParam := True;
+            end;
+          end;
+        end;
+        LParamStr := Format('const %s &%s',
+          [GetTypeNameQtCPP(LParameter), LName]);
+
+        if Result <> '' then
+          Result := Result + ', ' + LParamStr
+        else
+          Result := LParamStr;
+      end;
+    finally
+      LNames.Free;
+    end;
+  end;
+end;
+
+function ReplaceWith(LParameter: TParameter;
+  var VReplace: String; const AExamples: IDataTable): Boolean; overload;
+var
+  K: Integer;
+  LStr: String;
+begin
+  Result := False;
+
+  if Assigned(AExamples)
+  and (Length(VReplace) > 2)
+  and (VReplace[Low(VReplace)] = '<')
+  and (VReplace[High(VReplace)] = '>') then
+  begin
+    LStr := VReplace.SubString(1, Length(VReplace) - 2);
+
+    for K := 0 to AExamples.ColCount - 1 do
+    begin
+      if String.Compare(LStr, AExamples.Values[K, 0], True) = 0 then
+      begin
+        VReplace := ToIdentifier(LStr, True);
+        if LParameter.ValueType = vtNumber then
+        begin
+          if pfFloat in LParameter.Flags then
+            VReplace := VReplace + '.toDouble()'
+          else if (pfBig in LParameter.Flags) then
+            VReplace := VReplace + '.toLongLong()'
+          else
+            VReplace := VReplace + '.toInt()'
+        end;
+
+        Result := True;
+        Break;
+      end;
+    end;
+  end;
+end;
+
+procedure ReplaceWith(const AExamples: IDataTable; var AOutput: String); overload;
+var
+  I: Integer;
+  LColName: String;
+begin
+  if Assigned(AExamples) then
+  begin
+    for I := 0 to AExamples.ColCount - 1 do
+    begin
+      LColName := AExamples.Values[I, 0];
+      AOutput := TRegEx.Replace(AOutput, '<' + LColName + '>',
+        '") + ' + ToIdentifier(LColName) + '_T("', [TRegExOption.roIgnoreCase]);
+    end;
+  end;
+end;
+
+function ParametersToArgumentStringQtCPP(AScenarioInfo: TScenarioInfo;
+  AStep: TScenario.TStep; const AParameters: array of TParameter): String;
+var
+  LParameter: TParameter;
+  LParamStr, LStr, LReplace: String;
+  LIndex, I, J: Integer;
+  LExamples: IDataTable;
+  LReplaced: Boolean;
+  LStringList: TStringList;
+  LMatchCollection: TMatchCollection;
+  LMatch: TMatch;
+  LMatchPtr: ^TMatch;
+begin
+  Result := '';
+  if Length(AParameters) > 0 then
+  begin
+    LExamples := AScenarioInfo.Examples;
+
+    LStr := '(\s|^)((\-?|\+?)[0-9]+|".*"|<.*>)(\s|$)';
+    LMatchCollection := TRegEx.Matches(AStep.Value, LStr, [roIgnoreCase]);
+
+    Assert(LMatchCollection.Count <= Length(AParameters));
+
+    for LIndex := 0 to Length(AParameters) - 1 do
+    begin
+      if LIndex < LMatchCollection.Count then
+      begin
+        LMatch := LMatchCollection[LIndex];
+        LMatchPtr := @LMatch;
+      end else
+        LMatchPtr := nil;
+
+      LParameter := AParameters[LIndex];
+      LParamStr := '';
+      case LParameter.ValueType of
+        vtRecord:
+        begin
+          Assert((pfArray in LParameter.Flags) and Assigned(AStep.DataTable));
+
+          with AStep.DataTable do
+          begin
+            for J := 1 to RowCount - 1 do
+            begin
+              LStr := '';
+              for I := 0 to ColCount - 1 do
+              begin
+                LReplace := Values[I, J];
+                LReplaced := ReplaceWith(LParameter, LReplace, LExamples);
+
+                if not LReplaced then
+                begin
+                  if LParameter.RecordFields[I].ValueType = vtString then
+                    LReplace := '_T("' + LReplace + '")';
+                end;
+
+                if I = 0 then
+                  LStr := LReplace
+                else
+                  LStr := LStr + ', ' + LReplace;
+              end;
+              if J = 1 then
+                LParamStr := '{' + LStr + '}'
+              else
+                LParamStr := LParamStr + ','#10#9#9#9'{' + LStr + '}';
+            end;
+          end;
+
+          LParamStr := '{' + LParamStr + '}';
+        end;
+        vtNumber:
+        begin
+          if Assigned(LMatchPtr) then
+          begin
+            Assert(not (pfArray in LParameter.Flags));
+
+            LParamStr := Trim(LMatchPtr.Value);
+            ReplaceWith(LParameter, LParamStr, LExamples);
+          end else
+          begin
+            Assert((pfArray in LParameter.Flags) and Assigned(AStep.DataTable));
+
+            with AStep.DataTable do
+            begin
+              for J := 0 to RowCount - 1 do
+              begin
+                LReplace := Values[0, J];
+                ReplaceWith(LParameter, LReplace, LExamples);
+
+                if J = 0 then
+                  LStr := LReplace
+                else
+                  LStr := LStr + ', ' + LReplace;
+              end;
+            end;
+
+            LParamStr := '{' + LStr + '}';
+          end;
+        end;
+        vtString:
+        begin
+          if Assigned(LMatchPtr) then
+          begin
+            Assert(not (pfArray in LParameter.Flags));
+
+            LParamStr := Trim(LMatchPtr.Value);
+            LReplaced := ReplaceWith(LParameter, LParamStr, LExamples);
+            if not LReplaced then
+              LParamStr := '_T(' + LParamStr + ')';
+          end else
+          if (pfArray in LParameter.Flags) and Assigned(AStep.DataTable) then
+          begin
+            with AStep.DataTable do
+            begin
+              for J := 0 to RowCount - 1 do
+              begin
+                LReplace := Values[0, J];
+                LReplaced := ReplaceWith(LParameter, LReplace, LExamples);
+
+                if not LReplaced then
+                  LReplace := '_T("' + LReplace + '")';
+
+                if J = 0 then
+                  LStr := LReplace
+                else
+                  LStr := LStr + ', ' + LReplace;
+              end;
+            end;
+
+            LParamStr := '{' + LStr + '}';
+          end else
+          if pfBig in LParameter.Flags then
+          begin
+            LStringList := TStringList.Create;
+            try
+              LStringList.Text := AStep.PyString;
+
+              for I := 0 to LStringList.Count - 1 do
+              begin
+                LStr := LStringList[I];
+                ReplaceWith(LExamples, LStr);
+                LStr := '_T("' + LStr + '")';
+                if I = 0 then
+                  LParamStr := LStr
+                else
+                  LParamStr := LParamStr + #10#9#9#9 + LStr;
+              end;
+
+              LParamStr := '{' + LParamStr + '}';
+            finally
+              LStringList.Free;
+            end;
+          end else
+          begin
+            raise Exception.Create('Unexpected');
+          end;
+        end;
+        else
+        begin
+          raise Exception.Create('Unknown  value type');
+        end;
+      end;
+
+      if Result <> '' then
+        Result := Result + ','#10#9#9 + LParamStr
+      else
+        Result := LParamStr;
+    end;
+  end;
+end;
+
+procedure OutputStepQtCPP(AInfo: TScenarioInfo; I: Integer; AStep: TScenario.TStep; AOutput: TStringList);
+var
+  LParamStr: String;
   LStepDef: TStepDef;
-  LSectionStarted: Boolean;
+begin
+  LStepDef := AInfo.Steps[I];
+  LParamStr := ParametersToArgumentStringQtCPP(AInfo, AStep, LStepDef.Parameters.List);
+  AOutput.Add(Format(#9#9'%s%s(%s);', [LStepDef.Prefix, LStepDef.ProcedureLine, LParamStr]));
+end;
+
+procedure GenerateFeatureTestClassContents(AFeature: TFeature;
+  AStepDefinitions: TObjectList<TStepDef>;
+  AScenarioInfo: TObjectList<TScenarioInfo>;
+  AOutput: TStringList;
+  ADummyImplementationOutput: TStringList;
+  AOutputFramework: TProgrammingFramework);
+var
+  LStep: TScenario.TStep;
+  LStepDef: TStepDef;
+  LInfo: TScenarioInfo;
+  LScenario: TScenario;
+  LExamples: IDataTable;
   LParameter, LRecordField: TParameter;
   LTypeNames, LFieldNames: TList<String>;
-  I: Integer;
   LParamStr, LAttributeLine: String;
+  I, J: Integer;
+  LSectionStarted: Boolean;
   LPrefixed: Boolean;
 begin
   ADummyImplementationOutput.Clear;
@@ -592,82 +942,228 @@ begin
   LTypeNames := TList<String>.Create;
   LFieldNames := TList<String>.Create;
   try
-    LSectionStarted := False;
-    for LStepDef in AStepDefinitions do
-    begin
-      for I := 0 to LStepDef.Parameters.Count - 1 do
+    case AOutputFramework of
+      Delphi:
       begin
-        LParameter := LStepDef.Parameters[I];
+        LSectionStarted := False;
+        for LStepDef in AStepDefinitions do
+        begin
+          for I := 0 to LStepDef.Parameters.Count - 1 do
+          begin
+            LParameter := LStepDef.Parameters[I];
 
-        if LParameter.ValueType = vtRecord then
+            if LParameter.ValueType = vtRecord then
+            begin
+              if not LSectionStarted then
+              begin
+                LSectionStarted := True;
+
+                AOutput.Add('  public type');
+              end;
+
+              LParameter.TypeName := 't_' + RegisterParameterName(LTypeNames, LParameter);
+              AOutput.Add(Format('    %s = record', [LParameter.TypeName]));
+
+              LStepDef.Parameters[I] := LParameter;
+
+              LFieldNames.Clear;
+
+              for LRecordField in LParameter.RecordFields do
+              begin
+                AOutput.Add(Format('      %s: %s;',
+                  [RegisterParameterName(LFieldNames, LRecordField),
+                   GetTypeNameDelphi(LRecordField)]));
+              end;
+
+              AOutput.Add('    end;');
+            end;
+          end;
+        end;
+
+        LSectionStarted := False;
+        for LStepDef in AStepDefinitions do
         begin
           if not LSectionStarted then
           begin
             LSectionStarted := True;
-            AOutput.Add('  public type');
+            AOutput.Add('  public');
           end;
 
-          LParameter.TypeName := 't_' + RegisterParameterName(LTypeNames, LParameter);
-          AOutput.Add(Format('    %s = record', [LParameter.TypeName]));
+          LParamStr := ParametersToStringDelphi(LStepDef.Parameters, LPrefixed);
 
-          LStepDef.Parameters[I] := LParameter;
-
-          LFieldNames.Clear;
-
-          for LRecordField in LParameter.RecordFields do
+          if LStepDef.UseAttribute or LPrefixed then
           begin
-            AOutput.Add(Format('      %s: %s;',
-              [RegisterParameterName(LFieldNames, LRecordField),
-               GetTypeName(LRecordField)]));
+            for LAttributeLine in LStepDef.AttributeLines do
+            begin
+              AOutput.Add(Format('    [%s(''%s'')]',
+                [LStepDef.Prefix, LAttributeLine.Replace('''', '''''')]));
+            end;
           end;
 
-          AOutput.Add('    end;');
+          AOutput.Add(Format('    procedure %s%s%s;',
+            [LStepDef.Prefix, LStepDef.ProcedureLine, LParamStr]));
+
+          ADummyImplementationOutput.Add(Format('procedure T%sTest.%s%s%s;',
+            [AFeature.FeatureClassName, LStepDef.Prefix, LStepDef.ProcedureLine, LParamStr]));
+          ADummyImplementationOutput.Add('begin');
+          ADummyImplementationOutput.Add('  Assert.Fail(''Write a test'');');
+          ADummyImplementationOutput.Add('end;');
+          ADummyImplementationOutput.Add('');
         end;
       end;
-    end;
-
-    LSectionStarted := False;
-    for LStepDef in AStepDefinitions do
-    begin
-      if not LSectionStarted then
+      QtCPP:
       begin
-        LSectionStarted := True;
-        AOutput.Add('  public');
-      end;
-
-      LParamStr := ParametersToString(LStepDef.Parameters, LPrefixed);
-
-      if LStepDef.UseAttribute or LPrefixed then
-      begin
-        for LAttributeLine in LStepDef.AttributeLines do
+        LSectionStarted := False;
+        for LStepDef in AStepDefinitions do
         begin
-          AOutput.Add(Format('    [%s(''%s'')]',
-            [LStepDef.Prefix, LAttributeLine.Replace('''', '''''')]));
+          for I := 0 to LStepDef.Parameters.Count - 1 do
+          begin
+            LParameter := LStepDef.Parameters[I];
+
+            if LParameter.ValueType = vtRecord then
+            begin
+              if not LSectionStarted then
+              begin
+                LSectionStarted := True;
+
+                AOutput.Add('public:');
+              end;
+
+              LParameter.TypeName := 't_' + RegisterParameterName(LTypeNames, LParameter);
+              AOutput.Add(Format(#9'struct %s', [LParameter.TypeName]));
+              AOutput.Add(#9'{');
+
+              LStepDef.Parameters[I] := LParameter;
+
+              LFieldNames.Clear;
+
+              for LRecordField in LParameter.RecordFields do
+              begin
+                AOutput.Add(Format(#9#9'%s %s;',
+                  [GetTypeNameQtCPP(LRecordField),
+                  RegisterParameterName(LFieldNames, LRecordField)]));
+              end;
+
+              AOutput.Add(#9'};');
+            end;
+          end;
+        end;
+
+        LSectionStarted := False;
+        for LStepDef in AStepDefinitions do
+        begin
+          if not LSectionStarted then
+          begin
+            LSectionStarted := True;
+            AOutput.Add('private:');
+          end;
+
+          LParamStr := ParametersToStringQtCPP(LStepDef.Parameters, LPrefixed);
+
+          AOutput.Add(Format(#9'void %s%s(%s);',
+            [LStepDef.Prefix, LStepDef.ProcedureLine, LParamStr]));
+
+          ADummyImplementationOutput.Add(Format('void %sTest::%s%s(%s)',
+            [AFeature.FeatureClassName, LStepDef.Prefix, LStepDef.ProcedureLine, LParamStr]));
+          ADummyImplementationOutput.Add('{');
+          ADummyImplementationOutput.Add(#9'QFAIL("Write a test!");');
+          ADummyImplementationOutput.Add('}');
+          ADummyImplementationOutput.Add('');
+        end;
+
+        LSectionStarted := False;
+        for LInfo in AScenarioInfo do
+        begin
+          if not LSectionStarted then
+          begin
+            LSectionStarted := True;
+            AOutput.Add('private Q_SLOTS:');
+          end;
+
+          LScenario := LInfo.Scenario;
+          LExamples := LInfo.Examples;
+          if LScenario = AFeature.Background then
+          begin
+            AOutput.Add(#9'// Background');
+            AOutput.Add(#9'void initTestCase()');
+          end else
+          begin
+            LParamStr := ToIdentifier(LScenario.Name, True);
+
+            if Assigned(LExamples) then
+            begin
+              AOutput.Add(#9'// Scenario Examples');
+              AOutput.Add(Format(#9'void %s_data()', [LParamStr]));
+              AOutput.Add(#9'{');
+              for I := 0 to LExamples.ColCount - 1 do
+              begin
+                AOutput.Add(Format(#9#9'QTest::addColumn<QString>("%s");',
+                  [ToIdentifier(LExamples.Values[I, 0], True)]));
+              end;
+
+              for J := 1 to LExamples.RowCount - 1 do
+              begin
+                LAttributeLine := '';
+                for I := 0 to LExamples.ColCount - 1 do
+                begin
+                  LAttributeLine := LAttributeLine +
+                    ' << _T("' + LExamples.Values[I, J] + '")';
+                end;
+                AOutput.Add(Format(#9#9'QTest::newRow("case%d")%s;',
+                  [J, LAttributeLine]));
+              end;
+              AOutput.Add(#9'}');
+              AOutput.Add('');
+            end;
+            AOutput.Add(#9'// Scenario');
+            AOutput.Add(Format(#9'void %s()', [LParamStr]));
+          end;
+
+          AOutput.Add(#9'{');
+          if Assigned(LExamples) then
+          begin
+            for I := 0 to LExamples.ColCount - 1 do
+            begin
+              AOutput.Add(Format(#9#9'QFETCH(QString, %s);',
+                [ToIdentifier(LExamples.Values[I, 0], True)]));
+            end;
+          end;
+
+          I := 0;
+          for LStep in LScenario.GivenSteps do
+          begin
+            OutputStepQtCPP(LInfo, I, LStep, AOutput);
+            Inc(I);
+          end;
+          for LStep in LScenario.WhenSteps do
+          begin
+            OutputStepQtCPP(LInfo, I, LStep, AOutput);
+            Inc(I);
+          end;
+          for LStep in LScenario.ThenSteps do
+          begin
+            OutputStepQtCPP(LInfo, I, LStep, AOutput);
+            Inc(I);
+          end;
+
+          AOutput.Add(#9'}');
+          AOutput.Add('');
         end;
       end;
-
-      AOutput.Add(Format('    procedure %s%s%s;',
-        [LStepDef.Prefix, LStepDef.ProcedureLine, LParamStr]));
-
-      ADummyImplementationOutput.Add(Format('procedure T%sTest.%s%s%s;',
-        [AClassName, LStepDef.Prefix, LStepDef.ProcedureLine, LParamStr]));
-      ADummyImplementationOutput.Add('begin');
-      ADummyImplementationOutput.Add('  Assert.Fail(''Write a test'');');
-      ADummyImplementationOutput.Add('end;');
-      ADummyImplementationOutput.Add('');
     end;
-
   finally
     LFieldNames.Free;
     LTypeNames.Free;
   end;
 end;
 
-procedure CompileFeatures(const AOutputPath, ALangCode: String; AFeatures: TFeatureList);
+procedure CompileFeatures(const AOutputPath, ALangCode: String;
+  AOutputFramework: TProgrammingFramework; AFeatures: TFeatureList);
 var
   LFeature: TFeature;
-  LOutput, LDummyImplementation: TStringList;
+  LMainHeaders, LMainOutput, LOutput, LDummyImplementation: TStringList;
   LStepDefinitions: TObjectList<TStepDef>;
+  LScenarioInfo: TObjectList<TScenarioInfo>;
   LScenario: TScenario;
   LScenarioOutline: TScenarioOutline;
   LString, LOutputFileName: String;
@@ -675,8 +1171,26 @@ var
 begin
   ForceDirectories(AOutputPath);
   LOutput := TStringList.Create;
+  LMainOutput := TStringList.Create;
+  LMainHeaders := TStringList.Create;
   LDummyImplementation := TStringList.Create;
   try
+    if AOutputFramework = QtCPP then
+    begin
+      LMainHeaders.Add('// AUTOMATICALLY GENERATED, DO NOT EDIT! //');
+      LMainHeaders.Add('');
+      LMainOutput.Add('static int executeTest(QObject *object, int argc, char **argv)');
+      LMainOutput.Add('{');
+      LMainOutput.Add(#9'int status = QTest::qExec(object, argc, argv);');
+      LMainOutput.Add(#9'delete object;');
+      LMainOutput.Add(#9'return status;');
+      LMainOutput.Add('}');
+      LMainOutput.Add('');
+      LMainOutput.Add('static int executeTests(int argc, char** argv)');
+      LMainOutput.Add('{');
+      LMainOutput.Add(#9'int status = 0;');
+    end;
+
     for LFeature in AFeatures do
     begin
       if not IsValidIdentifier(LFeature.FeatureClassName) then
@@ -684,132 +1198,282 @@ begin
           [LFeature.FeatureClassName]);
 
       LOutput.Add('// AUTOMATICALLY GENERATED, DO NOT EDIT! //');
-      LOutput.Add('');
-      LOutput.Add('type');
-      LOutput.Add(Format('  [Feature(''%s'')]', [LFeature.Name.Replace('''', '''''')]));
-      LOutput.Add(Format('  T%sTest = class(T%sTestContext)',
-        [LFeature.FeatureClassName, LFeature.FeatureClassName]));
 
+      case AOutputFramework of
+        Delphi:
+        begin
+          LOutput.Add('');
+          LOutput.Add('type');
+          LOutput.Add(Format('  [Feature(''%s'')]', [LFeature.Name.Replace('''', '''''')]));
+          LOutput.Add(Format('  T%sTest = class(T%sTestContext)',
+            [LFeature.FeatureClassName, LFeature.FeatureClassName]));
+        end;
+        QtCPP:
+        begin
+          LOutput.Add(Format('// Feature "%s" Test Header', [LFeature.Name]));
+          LOutput.Add('#pragma once');
+          LOutput.Add('');
+          LOutput.Add(Format('#include "%sTestContext.h"',
+            [LFeature.FeatureClassName]));
+          LOutput.Add('');
+          LOutput.Add('#include <QList>');
+          LOutput.Add('#include <QString>');
+          LOutput.Add('#include <QtTest>');
+          LOutput.Add('');
+          LOutput.Add('#if defined(_UNICODE) && defined(_MSC_VER)');
+          LOutput.Add(' #define _T(c) QString::fromWCharArray(L##c)');
+          LOutput.Add('#else');
+          LOutput.Add(' #define _T(c) c');
+          LOutput.Add('#endif');
+          LOutput.Add('');
+          LOutput.Add(Format('class %sTest : public %sTestContext',
+            [LFeature.FeatureClassName, LFeature.FeatureClassName]));
+          LOutput.Add('{');
+          LOutput.Add(#9'Q_OBJECT');
+        end;
+      end;
 
+      LScenarioInfo := TObjectList<TScenarioInfo>.Create;
       LStepDefinitions := TObjectList<TStepDef>.Create;
       try
-        GetScenarioStepDefinitions(LFeature.Background, nil, LStepDefinitions);
+        GetScenarioStepDefinitions(LFeature.Background, LStepDefinitions,
+          LScenarioInfo);
 
         for LScenario in LFeature.Scenarios do
-          GetScenarioStepDefinitions(LScenario, nil, LStepDefinitions);
+          GetScenarioStepDefinitions(LScenario, LStepDefinitions, LScenarioInfo);
 
         for LScenarioOutline in LFeature.ScenarioOutlines do
         begin
-          GetScenarioStepDefinitions(LScenarioOutline,
-            LScenarioOutline.Examples, LStepDefinitions);
+          GetScenarioStepDefinitions(LScenarioOutline, LStepDefinitions, LScenarioInfo);
         end;
 
-        GenerateFeatureTestClassContents(LFeature.FeatureClassName,
-          LStepDefinitions, LOutput, LDummyImplementation);
+        GenerateFeatureTestClassContents(LFeature, LStepDefinitions,
+          LScenarioInfo, LOutput, LDummyImplementation, AOutputFramework);
 
-        LOutput.Add('  end;');
-        LOutput.Add('');
-        LOutput.Add('const');
-        LOutput.Add(Format('  %sSource: String = (', [LFeature.FeatureClassName]));
-
-        LHigh := LFeature.Source.Count - 1;
-        for I := 0 to LHigh do
-        begin
-          LString := '''' + LFeature.Source[I].Replace('''', '''''') + '''#13#10';
-          if I < LHigh then
-           LString := LString + ' +';
-
-          LOutput.Add(LString);
-        end;
-        LOutput.Add(');');
-        LOutput.Add('');
-        LOutput.Add(Format('procedure Register%sTest;', [ LFeature.FeatureClassName ]));
-        LOutput.Add('begin');
-        LOutput.Add(Format('  RegisterStepDefinitionsClass(T%sTest);',
-          [LFeature.FeatureClassName]));
-        LOutput.Add(
-          Format('  TDelphiSpecParser.RegisterClass(''%s'', ''%s'', %sSource);',
-          [ LFeature.FeatureClassName, ALangCode, LFeature.FeatureClassName ]));
-        LOutput.Add('end;');
-
-        LOutputFileName := Format('%s\Test%s.inc',
-          [AOutputPath, LFeature.FeatureClassName]);
-        LOutput.SaveToFile(LOutputFileName, TEncoding.UTF8);
-
-        Writeln(LOutputFileName);
-
-        LOutput.Clear;
-
-        LOutputFileName := Format('%s\Test%s.pas',
-          [AOutputPath, LFeature.FeatureClassName]);
-
-        if not FileExists(LOutputFileName) then
-        begin
-          LOutput.Add(Format('unit Test%s;', [LFeature.FeatureClassName]));
-          LOutput.Add('');
-          LOutput.Add('interface');
-          LOutput.Add('');
-          LOutput.Add('uses');
-          LOutput.Add('  System.SysUtils');
-          LOutput.Add(', Generics.Collections');
-          LOutput.Add(', DelphiSpec.StepDefinitions;');
-          LOutput.Add('');
-          LOutput.Add('type');
-          LOutput.Add(Format('  T%sTestContext = class(TStepDefinitions)',
-            [LFeature.FeatureClassName]));
-          LOutput.Add('  public');
-          LOutput.Add('    procedure SetUp; override;');
-          LOutput.Add('    procedure TearDown; override;');
-          LOutput.Add('  end;');
-          LOutput.Add('');
-          LOutput.Add('implementation');
-          LOutput.Add('');
-          LOutput.Add('uses');
-          LOutput.Add('  DelphiSpec.Core');
-          LOutput.Add(', DelphiSpec.Assert');
-          LOutput.Add(', DelphiSpec.Attributes');
-          LOutput.Add(', DelphiSpec.Parser;');
-          LOutput.Add('');
-          LOutput.Add(Format('{$I Test%s.inc}', [LFeature.FeatureClassName]));
-          LOutput.Add('');
-          LOutput.Add(Format('{ T%sTestContext }', [LFeature.FeatureClassName]));
-          LOutput.Add('');
-          LOutput.Add(Format('procedure T%sTestContext.SetUp;', [LFeature.FeatureClassName]));
-          LOutput.Add('begin');
-          LOutput.Add('  // TODO: SetUp');
-          LOutput.Add('end;');
-          LOutput.Add('');
-          LOutput.Add(Format('procedure T%sTestContext.TearDown;', [LFeature.FeatureClassName]));
-          LOutput.Add('begin');
-          LOutput.Add('  // TODO: TearDown');
-          LOutput.Add('end;');
-          LOutput.Add('');
-          LOutput.Add(Format('{ T%sTest }', [LFeature.FeatureClassName]));
-          LOutput.Add('');
-          for I := 0 to LDummyImplementation.Count - 1 do
+        case AOutputFramework of
+          Delphi:
           begin
-            LOutput.Add(LDummyImplementation[I]);
+            LOutput.Add('  end;');
+            LOutput.Add('');
+            LOutput.Add('const');
+            LOutput.Add(Format('  %sSource: String = (', [LFeature.FeatureClassName]));
+
+            LHigh := LFeature.Source.Count - 1;
+            for I := 0 to LHigh do
+            begin
+              LString := '''' + LFeature.Source[I].Replace('''', '''''') + '''#13#10';
+              if I < LHigh then
+               LString := LString + ' +';
+
+              LOutput.Add(LString);
+            end;
+            LOutput.Add(');');
+            LOutput.Add('');
+            LOutput.Add(Format('procedure Register%sTest;', [ LFeature.FeatureClassName ]));
+            LOutput.Add('begin');
+            LOutput.Add(Format('  RegisterStepDefinitionsClass(T%sTest);',
+              [LFeature.FeatureClassName]));
+            LOutput.Add(
+              Format('  TDelphiSpecParser.RegisterClass(''%s'', ''%s'', %sSource);',
+              [ LFeature.FeatureClassName, ALangCode, LFeature.FeatureClassName ]));
+            LOutput.Add('end;');
+
+            LOutputFileName := Format('%s\Test%s.inc',
+              [AOutputPath, LFeature.FeatureClassName]);
+
+            LOutput.SaveToFile(LOutputFileName, TEncoding.UTF8);
+
+            Writeln(LOutputFileName);
+
+            LOutputFileName := Format('%s\Test%s.pas',
+              [AOutputPath, LFeature.FeatureClassName]);
+
+            if not FileExists(LOutputFileName) then
+            begin
+              LOutput.Clear;
+              LOutput.Add(Format('unit Test%s;', [LFeature.FeatureClassName]));
+              LOutput.Add('');
+              LOutput.Add('interface');
+              LOutput.Add('');
+              LOutput.Add('uses');
+              LOutput.Add('  System.SysUtils');
+              LOutput.Add(', Generics.Collections');
+              LOutput.Add(', DelphiSpec.StepDefinitions;');
+              LOutput.Add('');
+              LOutput.Add('type');
+              LOutput.Add(Format('  T%sTestContext = class(TStepDefinitions)',
+                [LFeature.FeatureClassName]));
+              LOutput.Add('  public');
+              LOutput.Add('    procedure SetUp; override;');
+              LOutput.Add('    procedure TearDown; override;');
+              LOutput.Add('  end;');
+              LOutput.Add('');
+              LOutput.Add('implementation');
+              LOutput.Add('');
+              LOutput.Add('uses');
+              LOutput.Add('  DelphiSpec.Core');
+              LOutput.Add(', DelphiSpec.Assert');
+              LOutput.Add(', DelphiSpec.Attributes');
+              LOutput.Add(', DelphiSpec.Parser;');
+              LOutput.Add('');
+              LOutput.Add(Format('{$I Test%s.inc}', [LFeature.FeatureClassName]));
+              LOutput.Add('');
+              LOutput.Add(Format('{ T%sTestContext }', [LFeature.FeatureClassName]));
+              LOutput.Add('');
+              LOutput.Add(Format('procedure T%sTestContext.SetUp;', [LFeature.FeatureClassName]));
+              LOutput.Add('begin');
+              LOutput.Add('  // TODO: SetUp');
+              LOutput.Add('end;');
+              LOutput.Add('');
+              LOutput.Add(Format('procedure T%sTestContext.TearDown;', [LFeature.FeatureClassName]));
+              LOutput.Add('begin');
+              LOutput.Add('  // TODO: TearDown');
+              LOutput.Add('end;');
+              LOutput.Add('');
+              LOutput.Add(Format('{ T%sTest }', [LFeature.FeatureClassName]));
+              LOutput.Add('');
+              for I := 0 to LDummyImplementation.Count - 1 do
+              begin
+                LOutput.Add(LDummyImplementation[I]);
+              end;
+
+              LOutput.Add('initialization');
+              LOutput.Add(Format('  Register%sTest;', [LFeature.FeatureClassName]));
+              LOutput.Add('end.');
+
+              LOutput.SaveToFile(LOutputFileName, TEncoding.UTF8);
+
+              Writeln(LOutputFileName);
+            end;
           end;
+          QtCPP:
+          begin
+            LOutput.Add('};');
 
-          LOutput.Add('initialization');
-          LOutput.Add(Format('  Register%sTest;', [LFeature.FeatureClassName]));
-          LOutput.Add('end.');
+            LOutputFileName := Format('%s\%sTest.h',
+              [AOutputPath, LFeature.FeatureClassName]);
 
-          LOutput.SaveToFile(LOutputFileName, TEncoding.UTF8);
+            LOutput.SaveToFile(LOutputFileName, TEncoding.UTF8);
 
-          Writeln(LOutputFileName);
+            Writeln(LOutputFileName);
+
+            LMainHeaders.Add(Format('#include "%sTest.h"', [LFeature.FeatureClassName]));
+
+            LMainOutput.Add(Format(#9'status |= executeTest(new %sTest, argc, argv);',
+            [LFeature.FeatureClassName]));
+
+            LOutputFileName := Format('%s\%sTest.cpp',
+              [AOutputPath, LFeature.FeatureClassName]);
+
+            if not FileExists(LOutputFileName) then
+            begin
+              LOutput.Clear;
+              LOutput.Add(Format('// Feature "%s" Test Code', [LFeature.Name]));
+              LOutput.Add('');
+              LOutput.Add(Format('#include "%sTest.h"', [LFeature.FeatureClassName]));
+              LOutput.Add('');
+
+              for I := 0 to LDummyImplementation.Count - 1 do
+              begin
+                LOutput.Add(LDummyImplementation[I]);
+              end;
+
+              LOutput.SaveToFile(LOutputFileName, TEncoding.UTF8);
+
+              Writeln(LOutputFileName);
+            end;
+
+            LOutputFileName := Format('%s\%sTestContext.h',
+              [AOutputPath, LFeature.FeatureClassName]);
+
+            if not FileExists(LOutputFileName) then
+            begin
+              LOutput.Clear;
+              LOutput.Add(Format('// Feature "%s" Test Context Header', [LFeature.Name]));
+              LOutput.Add('');
+              LOutput.Add('#include <QObject>');
+              LOutput.Add('');
+              LOutput.Add(Format('class %sTestContext : public QObject',
+                [LFeature.FeatureClassName]));
+              LOutput.Add('{');
+              LOutput.Add(#9'Q_OBJECT');
+              LOutput.Add('public:');
+              LOutput.Add(Format(#9'%sTestContext();',
+                [LFeature.FeatureClassName]));
+              LOutput.Add(Format(#9'virtual ~%sTestContext();',
+                [LFeature.FeatureClassName]));
+              LOutput.Add('');
+              LOutput.Add('protected Q_SLOTS:');
+              LOutput.Add(#9'void init();');
+              LOutput.Add(#9'void cleanup();');
+              LOutput.Add('};');
+
+              LOutput.SaveToFile(LOutputFileName, TEncoding.UTF8);
+
+              Writeln(LOutputFileName);
+            end;
+
+            LOutputFileName := Format('%s\%sTestContext.cpp',
+              [AOutputPath, LFeature.FeatureClassName]);
+
+            if not FileExists(LOutputFileName) then
+            begin
+              LOutput.Clear;
+              LOutput.Add(Format('// Feature "%s" Test Context Code', [LFeature.Name]));
+              LOutput.Add('');
+              LOutput.Add(Format('#include "%sTestContext.h"', [LFeature.FeatureClassName]));
+              LOutput.Add('');
+              LOutput.Add(Format('%sTestContext::%sTestContext()',
+                [LFeature.FeatureClassName, LFeature.FeatureClassName]));
+              LOutput.Add('{');
+              LOutput.Add('}');
+              LOutput.Add('');
+              LOutput.Add(Format('%sTestContext::~%sTestContext()',
+                [LFeature.FeatureClassName, LFeature.FeatureClassName]));
+              LOutput.Add('{');
+              LOutput.Add('}');
+              LOutput.Add('');
+              LOutput.Add(Format('void %sTestContext::init()',
+                [LFeature.FeatureClassName]));
+              LOutput.Add('{');
+              LOutput.Add('}');
+              LOutput.Add('');
+              LOutput.Add(Format('void %sTestContext::cleanup()',
+                [LFeature.FeatureClassName]));
+              LOutput.Add('{');
+              LOutput.Add('}');
+
+              LOutput.SaveToFile(LOutputFileName, TEncoding.UTF8);
+
+              Writeln(LOutputFileName);
+            end;
+          end;
         end;
-
-
       finally
         LStepDefinitions.Free;
+        LScenarioInfo.Free;
       end;
 
       LOutput.Clear;
     end;
 
+    if AOutputFramework = QtCPP then
+    begin
+      LMainOutput.Add(#9'return status;');
+      LMainOutput.Add('}');
+
+      LMainHeaders.Add('');
+      LMainHeaders.AddStrings(LMainOutput);
+
+      LOutputFileName := Format('%s\TestsMain.h', [AOutputPath]);
+
+      LMainHeaders.SaveToFile(LOutputFileName, TEncoding.UTF8);
+    end;
+
   finally
     LDummyImplementation.Free;
+    LMainHeaders.Free;
+    LMainOutput.Free;
     LOutput.Free;
   end;
 end;
@@ -834,7 +1498,6 @@ class function TStepDef.Find(AList: TObjectList<TStepDef>;
 var
   LDef: TStepDef;
   I: Integer;
-  LParameter: TParameter;
   LParameterPtr: ^TParameter;
   LTemp: array of TParameter;
   LContinue, LChanged, LExactLineFound: Boolean;
@@ -862,37 +1525,37 @@ begin
         Inc(LParameterPtr);
       end;
 
-      if LContinue then
-        Continue;
-
       LExactLineFound := False;
-      LOriginalAttributeLine := ADef.AttributeLines.First;
-      LAttributeLine := LOriginalAttributeLine.Replace('"(.*)"', '(.*)');
-      for LString in LDef.AttributeLines do
+      if not LContinue then
       begin
-        if LString.Replace('"(.*)"', '(.*)') <> LAttributeLine then
+        LOriginalAttributeLine := ADef.AttributeLines.First;
+        LAttributeLine := LOriginalAttributeLine.Replace('"(.*)"', '(.*)');
+        for LString in LDef.AttributeLines do
         begin
-          LContinue := True;
-          Break;
+          if LString.Replace('"(.*)"', '(.*)') <> LAttributeLine then
+          begin
+            LContinue := True;
+            Break;
+          end;
+
+          if not LExactLineFound and (LString = LOriginalAttributeLine) then
+            LExactLineFound := True;
         end;
-
-        if not LExactLineFound and (LString = LOriginalAttributeLine) then
-          LExactLineFound := True;
       end;
 
-      if LContinue then
-        Continue;
-
-      if not LExactLineFound then
-        LDef.AttributeLines.Add(ADef.AttributeLines.First);
-
-      if LChanged then
+      if not LContinue then
       begin
-        LDef.Parameters.Clear;
-        for I := 0 to Length(LTemp) - 1 do
-          LDef.Parameters.Add(LTemp[I]);
+        if not LExactLineFound then
+          LDef.AttributeLines.Add(ADef.AttributeLines.First);
+
+        if LChanged then
+        begin
+          LDef.Parameters.Clear;
+          for I := 0 to Length(LTemp) - 1 do
+            LDef.Parameters.Add(LTemp[I]);
+        end;
+        Exit;
       end;
-      Exit;
     end;
 
     Inc(Result);
@@ -952,21 +1615,62 @@ begin
   Result := True;
 end;
 
+{ TScenarioInfo }
+
+constructor TScenarioInfo.Create(AScenario: TScenario);
+begin
+  Scenario := AScenario;
+  Steps := TList<TStepDef>.Create;
+end;
+
+destructor TScenarioInfo.Destroy;
+begin
+  Steps.Free;
+  inherited;
+end;
+
+function TScenarioInfo.GetExamples: IDataTable;
+begin
+  if Scenario is TScenarioOutline then
+    Result := TScenarioOutline(Scenario).Examples
+  else
+    Result := nil;
+end;
+
 var
   LanguageCode: String;
+  OutputCode: String;
+  OutputFramework: TProgrammingFramework;
   Features: TFeatureList;
 begin
   try
     if ParamCount >= 2 then
     begin
       if ParamCount >= 3 then
-        LanguageCode := ParamStr(3)
-      else
+        LanguageCode := ParamStr(3);
+
+      if LanguageCode = '' then
         LanguageCode := 'EN';
+
+      if ParamCount >= 4 then
+        OutputCode := ParamStr(4);
+
+      if OutputCode = '' then
+        OutputCode := 'DELPHI' else
+        OutputCode := UpperCase(OutputCode);
+
+      if OutputCode = 'DELPHI' then
+        OutputFramework := TProgrammingFramework.Delphi else
+      if (OutputCode = 'QTC++') or (OutputCode = 'QTCPP') then
+        OutputFramework := TProgrammingFramework.QtCPP else
+        OutputFramework := TProgrammingFramework.Unknown;
+
+      if OutputFramework = TProgrammingFramework.Unknown then
+        raise Exception.CreateFmt('Unknown programming framework: "%s"', [OutputCode]);
 
       Features := ReadFeatures(ParamStr(1), True, LanguageCode, False);
       try
-        CompileFeatures(ParamStr(2), LanguageCode, Features);
+        CompileFeatures(ParamStr(2), LanguageCode, OutputFramework, Features);
       finally
         Features.Free;
       end;
