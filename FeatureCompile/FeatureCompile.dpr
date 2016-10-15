@@ -1157,6 +1157,22 @@ begin
   end;
 end;
 
+const
+  TestsMainQtCPP: String =
+  '#include "TestsMain.h"'#10 +
+  #10 +
+  '#include <QCoreApplication>'#10 +
+  '#include <QDebug>'#10 +
+  #10 +
+  'int main(int argc, char *argv[])'#10 +
+  '{'#10 +
+  #9'qDebug() << "Startup Testing...";'#10 +
+  #9'QCoreApplication app(argc, argv);'#10 +
+  #9'app.setAttribute(Qt::AA_Use96Dpi, true);'#10 +
+  #9'QTEST_SET_MAIN_SOURCE_PATH'#10 +
+  #9'return executeTests(argc, argv);'#10 +
+  '}';
+
 procedure CompileFeatures(const AOutputPath, ALangCode: String;
   AOutputFramework: TProgrammingFramework; AFeatures: TFeatureList);
 var
@@ -1223,7 +1239,7 @@ begin
           LOutput.Add('#if defined(_UNICODE) && defined(_MSC_VER)');
           LOutput.Add(' #define _T(c) QString::fromWCharArray(L##c)');
           LOutput.Add('#else');
-          LOutput.Add(' #define _T(c) c');
+          LOutput.Add(' #define _T(c) QString::fromUtf8(c)');
           LOutput.Add('#endif');
           LOutput.Add('');
           LOutput.Add(Format('class %sTest : public %sTestContext',
@@ -1468,6 +1484,14 @@ begin
       LOutputFileName := Format('%s\TestsMain.h', [AOutputPath]);
 
       LMainHeaders.SaveToFile(LOutputFileName, TEncoding.UTF8);
+
+      LOutputFileName := Format('%s\TestsMain.cpp', [AOutputPath]);
+
+      if not FileExists(LOutputFileName) then
+      begin
+        LMainOutput.Text := TestsMainQtCPP;
+        LMainOutput.SaveToFile(LOutputFileName, TEncoding.UTF8);
+      end;
     end;
 
   finally
@@ -1682,6 +1706,7 @@ begin
     {$IFDEF DEBUG}
       Readln;
     {$ENDIF}
+      Halt(1);
     end;
   end;
 end.
