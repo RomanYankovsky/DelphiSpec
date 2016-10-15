@@ -42,7 +42,9 @@ Thumbs.db
 *.dproj.local
 *.identcache
 __history
-Win32
+**/Debug/
+**/Release/
+*.deployproj
 *.res
 *.dsk
 *.~*
@@ -57,3 +59,5 @@ dunit.ini
 # DUnitX files #
 ###############
 dunitx-results.xml
+*.local
+*.stat

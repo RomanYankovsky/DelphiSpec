@@ -20,15 +20,19 @@ type
   TFeature = class
   private
     FName: string;
+    FSource: TStringList;
+    FClassName: String;
     FBackground: TScenario;
     FScenarios: TScenarioList;
     FScenarioOutlines: TScenarioOutlineList;
     FStepDefsClass: TStepDefinitionsClass;
   public
-    constructor Create(const Name: string; StepDefsClass: TStepDefinitionsClass); reintroduce;
+    constructor Create(const Name, ClassName: string; StepDefsClass: TStepDefinitionsClass); reintroduce;
     destructor Destroy; override;
 
+    property Source: TStringList read FSource;
     property Background: TScenario read FBackground write FBackground;
+    property FeatureClassName: String read FClassName;
     property Name: string read FName;
     property Scenarios: TScenarioList read FScenarios;
     property ScenarioOutlines: TScenarioOutlineList read FScenarioOutlines;
@@ -37,7 +41,9 @@ type
 
   EScenarioStepException = class(Exception);
   TScenario = class
-  protected type
+  private
+    FUserObject: TObject;
+  public type
     TStep = class
     strict private
       FValue: string;
@@ -64,6 +70,7 @@ type
       RttiMethod: TRttiMethod; const Value: string): Boolean;
     function PrepareStep(const Step: string; AttributeClass: TDelphiSpecStepAttributeClass;
       const MethodName: string; const Params: TArray<TRttiParameter>): string;
+    procedure SetUserObject(Value: TObject);
   protected
     FGiven: TStepList;
     FWhen: TStepList;
@@ -78,8 +85,12 @@ type
 
     procedure Execute(StepDefs: TStepDefinitions);
 
+    property GivenSteps: TStepList read FGiven;
+    property WhenSteps: TStepList read FWhen;
+    property ThenSteps: TStepList read FThen;
     property Feature: TFeature read FFeature;
     property Name: string read FName;
+    property UserObject: TObject read FUserObject write SetUserObject;
   end;
 
   TScenarioOutline = class(TScenario)
@@ -95,6 +106,7 @@ type
 
     procedure SetExamples(Examples: IDataTable);
 
+    property Examples: IDataTable read FExamples;
     property Scenarios: TScenarioList read GetScenarios;
   end;
 
@@ -105,10 +117,12 @@ uses
 
 { TFeature }
 
-constructor TFeature.Create(const Name: string; StepDefsClass: TStepDefinitionsClass);
+constructor TFeature.Create(const Name, ClassName: string; StepDefsClass: TStepDefinitionsClass);
 begin
   inherited Create;
+  FSource := TStringList.Create;
   FName := Name;
+  FClassName := ClassName;
   FBackground := nil;
   FScenarios := TScenarioList.Create(True);
   FScenarioOutlines := TScenarioOutlineList.Create(True);
@@ -117,6 +131,7 @@ end;
 
 destructor TFeature.Destroy;
 begin
+  FSource.Free;
   FreeAndNil(FBackground);
   FScenarioOutlines.Free;
   FScenarios.Free;
@@ -239,7 +254,27 @@ function TScenario.ConvertDataTable(DataTable: IDataTable;
       DynArraySetLength(PPointer(Result[I].GetReferenceToRawData)^, Result[I].TypeInfo, 1, @ArrayLength);
       for J := 0 to DataTable.RowCount - 1 do
         Result[I].SetArrayElement(J,
-          ConvertParamValue(DataTable.Values[J, I], (ElementType as TRttiDynamicArrayType).ElementType));
+          ConvertParamValue(DataTable.Values[I, J], (ElementType as TRttiDynamicArrayType).ElementType));
+    end;
+  end;
+
+  function ConvertDataTableToArray(DataTable: IDataTable;
+    ElementType: TRttiType): TValueArray;
+  var
+    I, J, K: Integer;
+    ArrayLength: Integer;
+  begin
+    ArrayLength := DataTable.RowCount * DataTable.ColCount;
+    SetLength(Result, ArrayLength);
+
+    K := 0;
+    for J := 0 to DataTable.RowCount - 1 do
+    begin
+      for I := 0 to DataTable.ColCount - 1 do
+      begin
+        Result[K] := ConvertParamValue(DataTable.Values[I, J], ElementType);
+        Inc(K);
+      end;
     end;
   end;
 
@@ -253,6 +288,8 @@ begin
       Values := ConvertDataTableToArrayOfRecords(DataTable, ElementType);
     TTypeKind.tkDynArray:
       Values := ConvertDataTableToTwoDimArray(DataTable, ElementType);
+    else
+      Values := ConvertDataTableToArray(DataTable, ElementType);
   end;
 
   Result := TValue.FromArray(ParamType.Handle, Values);
@@ -260,6 +297,7 @@ end;
 
 destructor TScenario.Destroy;
 begin
+  FUserObject.Free;
   FGiven.Free;
   FWhen.Free;
   FThen.Free;
@@ -354,6 +392,7 @@ function TScenario.PrepareStep(const Step: string; AttributeClass: TDelphiSpecSt
 var
   I: Integer;
   Prefix: string;
+  ParamName: String;
 begin
   Result := Step;
   if Result = '' then
@@ -364,10 +403,21 @@ begin
       Result := RightStr(MethodName, Length(MethodName) - Length(Prefix));
       Result := ReplaceStr(Result, '_', ' ');
       for I := 0 to High(Params) do
-        Result := TRegEx.Replace(Result, '\b' + Params[I].Name + '\b', '$' + Params[I].Name, [TRegExOption.roIgnoreCase]);
+      begin
+        ParamName := ReplaceStr(Params[I].Name, '_', ' ');
+        Result := TRegEx.Replace(Result,
+          '\b' + ParamName + '\b', '$' + Params[I].Name,
+          [TRegExOption.roIgnoreCase]);
+      end;
     end;
   end;
   Result := TRegEx.Replace(Result, '(\$[a-zA-Z0-9_]*)', '(.*)');
+end;
+
+procedure TScenario.SetUserObject(Value: TObject);
+begin
+  FreeAndNil(FUserObject);
+  FUserObject := Value;
 end;
 
 { TScenarioOutline }
@@ -399,7 +449,7 @@ end;
 
 procedure TScenarioOutline.PrepareScenarios;
 
-  function PutValues(const Step: string; Index: Integer): string;
+  function PutValues(const Step: string; Index: Integer): string; overload;
   var
     I: Integer;
   begin
@@ -408,6 +458,30 @@ procedure TScenarioOutline.PrepareScenarios;
     for I := 0 to FExamples.ColCount - 1 do
       Result := TRegEx.Replace(Result, '<' + FExamples.Values[I, 0] + '>',
         FExamples.Values[I, Index], [TRegExOption.roIgnoreCase]);
+  end;
+
+  function PutValues(const DataTable: IDataTable; Index: Integer): IDataTable; overload;
+  var
+    Row, Column: Integer;
+    Data: TStringDynArray;
+    NewTable: TDataTable;
+  begin
+    Result := nil;
+    if Assigned(DataTable) then
+    begin
+      NewTable := TDataTable.Create(DataTable.ColCount);
+      SetLength(Data, DataTable.ColCount);
+
+      for Row := 0 to DataTable.RowCount - 1 do
+      begin
+        for Column := 0 to DataTable.ColCount - 1 do
+          Data[Column] := PutValues(DataTable.Values[Column, Row], Index);
+
+        NewTable.AddRow(Data);
+      end;
+
+      Result := NewTable;
+    end;
   end;
 
 var
@@ -420,13 +494,16 @@ begin
     Scenario := TScenario.Create(Feature, Name + Format(' [case %d]', [I]));
 
     for Step in FGiven do
-      Scenario.AddGiven(PutValues(Step.Value, I), Step.DataTable, PutValues(Step.PyString, I));
+      Scenario.AddGiven(PutValues(Step.Value, I),
+        PutValues(Step.DataTable, I), PutValues(Step.PyString, I));
 
     for Step in FWhen do
-      Scenario.AddWhen(PutValues(Step.Value, I), Step.DataTable, PutValues(Step.PyString, I));
+      Scenario.AddWhen(PutValues(Step.Value, I),
+        PutValues(Step.DataTable, I), PutValues(Step.PyString, I));
 
     for Step in FThen do
-      Scenario.AddThen(PutValues(Step.Value, I), Step.DataTable, PutValues(Step.PyString, I));
+      Scenario.AddThen(PutValues(Step.Value, I),
+        PutValues(Step.DataTable, I), PutValues(Step.PyString, I));
 
     FScenarios.Add(Scenario);
   end;

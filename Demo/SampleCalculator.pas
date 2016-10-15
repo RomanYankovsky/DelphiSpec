@@ -8,17 +8,17 @@ uses
 type
   TCalculator = class
   private
-    FData: TStack<Integer>;
-    FValue: Integer;
+    FData: TStack<Int64>;
+    FValue: Int64;
   public
     constructor Create;
     destructor Destroy; override;
 
     procedure Add;
     procedure Mul;
-    procedure Push(Value: Integer);
+    procedure Push(Value: Int64);
 
-    property Value: Integer read FValue;
+    property Value: Int64 read FValue;
   end;
 
 implementation
@@ -37,7 +37,7 @@ end;
 constructor TCalculator.Create;
 begin
   inherited;
-  FData := TStack<Integer>.Create;
+  FData := TStack<Int64>.Create;
 end;
 
 destructor TCalculator.Destroy;
@@ -55,7 +55,7 @@ begin
     FValue := FValue * FData.Pop;
 end;
 
-procedure TCalculator.Push(Value: Integer);
+procedure TCalculator.Push(Value: Int64);
 begin
   FData.Push(Value);
 end;

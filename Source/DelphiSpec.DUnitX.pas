@@ -64,25 +64,22 @@ var
 
   FeatureFixture: ITestFixture;
   OutlineFixture: ITestFixture;
-  ScenarioFixture: ITestFixture;
 
   procedure BuildTests(const ParentFixture: ITestFixture; const Scenarios: TScenarioList);
   var
-    FixtureInstance: TDUnitXScenario;
     TestMethod: TTestMethod;
     Method: TMethod;
     Scenario: TScenario;
   begin
     for Scenario in Scenarios do
     begin
-       FixtureInstance := TDUnitXScenario.Create(Scenario);
-       ScenarioFixture := parentFixture.AddChildFixture(FixtureInstance, Scenario.Name, '');
+       Scenario.UserObject := TDUnitXScenario.Create(Scenario);
 
-       Method.Data := FixtureInstance;
+       Method.Data := Scenario.UserObject;
        Method.Code := @TDUnitXScenario.Execute;
 
        TestMethod := TTestMethod(Method);
-       ScenarioFixture.AddTest('', TestMethod, Scenario.Name, '');
+       ParentFixture.AddTest('', TestMethod, Scenario.Name, '');
     end;
   end;
 

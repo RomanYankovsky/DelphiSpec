@@ -3,7 +3,7 @@ unit DelphiSpec.Parser;
 interface
 
 uses
-  SysUtils, Classes, Generics.Collections, XmlIntf, DelphiSpec.DataTable,
+  System.SysUtils, System.Classes, Generics.Collections, XmlIntf, DelphiSpec.DataTable,
   DelphiSpec.Scenario, DelphiSpec.StepDefinitions;
 
 type
@@ -25,7 +25,6 @@ type
     FLinePos: Integer;
     FLines: TStringList;
     function GetEof: Boolean;
-    function GetLineNo: Integer;
   public
     constructor Create;
     destructor Destroy; override;
@@ -34,8 +33,11 @@ type
     function PeekLine: string;
     function ReadLine: string;
 
+    procedure Clear;
+
+    property Lines: TStringList read FLines;
     property Eof: Boolean read GetEof;
-    property LineNo: Integer read GetLineNo;
+    property LineNo: Integer read FLinePos write FLinePos;
   end;
 
   EDelphiSpecSyntaxError = class(Exception)
@@ -77,11 +79,20 @@ type
     procedure WhenNode(Scenario: TScenario);
     procedure ThenNode(Scenario: TScenario);
     procedure ExampleNode(ScenarioOutline: TScenarioOutline);
+  protected
+    class var FFeatures: TFeatureList;
+    class destructor Destroy;
   public
+    class function GetFeatures: TFeatureList;
+    class procedure RegisterClass(const AClassName, ALanguageCode, ASource: String);
+
     constructor Create(const LangCode: string);
     destructor Destroy; override;
 
-    procedure Execute(const FileName: string; Features: TFeatureList);
+    procedure Execute(const FileName: string; Features: TFeatureList; CheckClasses: Boolean = True); overload;
+    procedure Execute(Features: TFeatureList; const ClassName: string; CheckClasses: Boolean = True); overload;
+
+    property Reader: TDelphiSpecFileReader read FReader;
   end;
 
 implementation
@@ -89,12 +100,19 @@ implementation
 uses
   StrUtils, Types, XmlDoc, Variants,
 {$IFDEF MSWINDOWS}
-  Windows, ActiveX,
+  ActiveX,
 {$ENDIF}
-
   DelphiSpec.Core;
 
+{$I DelphiSpecI18n.xml.inc}
+
 { TDelphiSpecFileReader }
+
+procedure TDelphiSpecFileReader.Clear;
+begin
+  FLinePos := 0;
+  FLines.Clear;
+end;
 
 constructor TDelphiSpecFileReader.Create;
 begin
@@ -112,11 +130,6 @@ end;
 function TDelphiSpecFileReader.GetEof: Boolean;
 begin
   Result := (FLinePos = FLines.Count);
-end;
-
-function TDelphiSpecFileReader.GetLineNo: Integer;
-begin
-  Result := FLinePos;
 end;
 
 procedure TDelphiSpecFileReader.LoadFromFile(const FileName: string);
@@ -164,6 +177,11 @@ begin
   FReader := TDelphiSpecFileReader.Create;
 end;
 
+class destructor TDelphiSpecParser.Destroy;
+begin
+  FFeatures.Free;
+end;
+
 destructor TDelphiSpecParser.Destroy;
 begin
   FReader.Free;
@@ -184,17 +202,30 @@ begin
   ScenarioOutline.SetExamples(TryReadDataTable);
 end;
 
-procedure TDelphiSpecParser.Execute(const FileName: string;
-  Features: TFeatureList);
+class procedure TDelphiSpecParser.RegisterClass(const AClassName, ALanguageCode,
+  ASource: String);
+begin
+  with TDelphiSpecParser.Create(ALanguageCode) do
+  try
+    FReader.Lines.Text := ASource;
+    Execute(GetFeatures, AClassName, True);
+  finally
+    Free;
+  end;
+end;
+
+procedure TDelphiSpecParser.Execute(Features: TFeatureList;
+  const ClassName: string; CheckClasses: Boolean);
 var
   Command, FeatureName: string;
   Feature: TFeature;
+  StepDefinitionsClass: TStepDefinitionsClass;
+  Start, I: Integer;
 begin
-  FReader.LoadFromFile(FileName);
-
   while not FReader.Eof do
   begin
     PassEmptyLines;
+    Start := FReader.LineNo;
     CheckEof;
 
     Command := Trim(FReader.ReadLine);
@@ -203,14 +234,34 @@ begin
 
     FeatureName := TDelphiSpecLanguages.GetStepText(skFeature, Command, FLangCode);
 
-    if not ( CheckStepClassExists(FeatureName) ) then
+    if CheckClasses and not ( CheckStepClassExists(FeatureName) ) then
       RaiseClassStepNotFound(FeatureName);
 
-    Feature := TFeature.Create(FeatureName, GetStepDefinitionsClass(FeatureName));
+    if CheckClasses then
+      StepDefinitionsClass := GetStepDefinitionsClass(FeatureName)
+    else
+      StepDefinitionsClass := TStepDefinitions;
+
+    Feature := TFeature.Create(FeatureName, ClassName, StepDefinitionsClass);
     Features.Add(Feature);
     FeatureNode(Feature);
+
+    if not CheckClasses then
+    begin
+      for I := Start to FReader.LineNo - 1 do
+      begin
+        Feature.Source.Add(FReader.Lines[I]);
+      end;
+    end;
   end;
 
+end;
+
+procedure TDelphiSpecParser.Execute(const FileName: string;
+  Features: TFeatureList; CheckClasses: Boolean);
+begin
+  FReader.LoadFromFile(FileName);
+  Execute(Features, ChangeFileExt(ExtractFileName(FileName), ''), CheckClasses);
 end;
 
 function TDelphiSpecParser.TryReadDataTable: IDataTable;
@@ -337,6 +388,14 @@ begin
   end;
 end;
 
+class function TDelphiSpecParser.GetFeatures: TFeatureList;
+begin
+  if not Assigned(FFeatures) then
+    FFeatures := TFeatureList.Create(True);
+
+  Result := FFeatures;
+end;
+
 procedure TDelphiSpecParser.GivenNode(Scenario: TScenario);
 var
   Command: string;
@@ -448,20 +507,16 @@ end;
 
 class constructor TDelphiSpecLanguages.Create;
 var
-  Stream: TResourceStream;
+  LXML: array[0..SizeOf(DelphiSpecI18n)] of Char;
 begin
 {$IFDEF MSWINDOWS}
-  ActiveX.CoInitialize(nil);
+  CoInitialize(nil);
 {$ENDIF}
 
+  FLangXML := NewXmlDocument;
 
-  Stream := TResourceStream.Create(hInstance, 'DelphiSpecLanguages', RT_RCDATA);
-  try
-    FLangXML := NewXmlDocument;
-    FLangXML.LoadFromStream(Stream);
-  finally
-    Stream.Free;
-  end;
+  LXML[Utf8ToUnicode(LXML, SizeOf(LXML), Pointer(@DelphiSpecI18n), SizeOf(DelphiSpecI18n))] := #0;
+  FLangXML.LoadFromXML(PWideChar(@LXML));
 end;
 
 class function TDelphiSpecLanguages.GetStepKindAsString(StepKind: TStepKind): string;

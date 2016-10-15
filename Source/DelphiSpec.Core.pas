@@ -5,7 +5,8 @@ interface
 uses
   Generics.Collections, DelphiSpec.StepDefinitions, DelphiSpec.Scenario;
 
-function ReadFeatures(const Path: string; Recursive: Boolean; const LangCode: string): TFeatureList;
+function ReadFeatures(const Path: string; Recursive: Boolean;
+  const LangCode: string; CheckClasses: Boolean = True): TFeatureList;
 
 function GetStepDefinitionsClass(const Name: string): TStepDefinitionsClass;
 procedure RegisterStepDefinitionsClass(StepDefinitionsClass: TStepDefinitionsClass);
@@ -53,7 +54,8 @@ begin
     __StepDefsClassList.ContainsKey( AnsiLowerCase(Name) );
 end;
 
-function ReadFeatures(const Path: string; Recursive: Boolean; const LangCode: string): TFeatureList;
+function ReadFeatures(const Path: string; Recursive: Boolean;
+  const LangCode: string; CheckClasses: Boolean): TFeatureList;
 var
   FileName: string;
   Parser: TDelphiSpecParser;
@@ -70,7 +72,7 @@ begin
     try
       for FileName in TDirectory.GetFiles(Path, FileMask, SearchMode) do
       try
-        Parser.Execute(FileName, Result);
+        Parser.Execute(FileName, Result, CheckClasses);
       except
         on E: EDelphiSpecSyntaxError do
           raise Exception.CreateFmt('Syntax error: line %d at %s', [E.LineNo, FileName]);
